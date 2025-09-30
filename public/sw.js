@@ -1,6 +1,11 @@
 // Service Worker for Parking Management System PWA
 // Implements caching strategies, offline support, and background sync
 
+import { precacheAndRoute } from 'workbox-precaching';
+
+// Workbox will inject the manifest here
+precacheAndRoute(self.__WB_MANIFEST);
+
 const CACHE_NAME = 'parking-system-v1.0.0'
 const RUNTIME_CACHE = 'parking-runtime-v1.0.0'
 const DATA_CACHE = 'parking-data-v1.0.0'

@@ -19,6 +19,9 @@ export default defineConfig({
       filename: 'sw.js',
       includeAssets: ['offline.html', 'icons/*.png'],
       manifest: false, // Use our custom manifest.json
+      injectManifest: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit for large bundles
+      },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         cleanupOutdatedCaches: true,
