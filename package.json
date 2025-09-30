@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:deploy": "vite build --mode production",
     "build:performance": "tsc -b && vite build --config vite.config.performance.ts",
     "build:analyze": "ANALYZE=true npm run build:performance",
     "build:report": "npm run build:performance && node scripts/build-optimization.js",
