@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - Parking Management System</title>
+  <style>
+    * { box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .offline-container {
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+      max-width: 400px;
+      width: 100%;
+    }
+    
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.8;
+    }
+    
+    h1 {
+      color: #1f2937;
+      margin: 0 0 1rem 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    
+    p {
+      color: #6b7280;
+      margin: 0 0 2rem 0;
+      line-height: 1.5;
+    }
+    
+    .features {
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1.5rem 0;
+      text-align: left;
+    }
+    
+    .features h3 {
+      color: #374151;
+      margin: 0 0 0.5rem 0;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .features ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .features li {
+      display: flex;
+      align-items: center;
+      padding: 0.25rem 0;
+      color: #4b5563;
+      font-size: 0.875rem;
+    }
+    
+    .features li::before {
+      content: "✓";
+      color: #10b981;
+      font-weight: bold;
+      margin-right: 0.5rem;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: background-color 0.2s;
+      min-width: 120px;
+    }
+    
+    button:hover {
+      background: #2563eb;
+    }
+    
+    .btn-secondary {
+      background: #6b7280;
+    }
+    
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+    
+    @media (max-width: 480px) {
+      .offline-container {
+        padding: 1.5rem;
+        margin: 1rem;
+      }
+      
+      .button-group {
+        flex-direction: column;
+      }
+      
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="icon">📱</div>
+    <h1>You're Offline</h1>
+    <p>
+      The parking management system is not available right now. 
+      Please check your internet connection and try again.
+    </p>
+    
+    <div class="features">
+      <h3>Available Offline Features</h3>
+      <ul>
+        <li>View cached parking data</li>
+        <li>Access recent statistics</li>
+        <li>Browse historical records</li>
+        <li>Changes sync when online</li>
+      </ul>
+    </div>
+    
+    <div class="button-group">
+      <button onclick="window.location.reload()">
+        Try Again
+      </button>
+      <button class="btn-secondary" onclick="goToCache()">
+        View Cached Data
+      </button>
+    </div>
+  </div>
+
+  <script>
+    function goToCache() {
+      // Try to navigate to cached dashboard
+      window.location.href = '/dashboard'
+    }
+    
+    // Auto-retry when back online
+    window.addEventListener('online', () => {
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    })
+    
+    // Show connection status
+    function updateStatus() {
+      const isOnline = navigator.onLine
+      const statusEl = document.querySelector('.connection-status')
+      
+      if (statusEl) {
+        statusEl.textContent = isOnline ? 'Back online! Refreshing...' : 'Still offline'
+        statusEl.style.color = isOnline ? '#10b981' : '#ef4444'
+        
+        if (isOnline) {
+          setTimeout(() => window.location.reload(), 1000)
+        }
+      }
+    }
+    
+    // Add status indicator
+    const container = document.querySelector('.offline-container')
+    const statusEl = document.createElement('div')
+    statusEl.className = 'connection-status'
+    statusEl.style.marginTop = '1rem'
+    statusEl.style.fontSize = '0.875rem'
+    statusEl.style.fontWeight = '500'
+    container.appendChild(statusEl)
+    
+    updateStatus()
+    window.addEventListener('online', updateStatus)
+    window.addEventListener('offline', updateStatus)
+  </script>
+</body>
+</html>
