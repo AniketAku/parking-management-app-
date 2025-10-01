@@ -134,6 +134,7 @@ export interface AuthUser {
   username: string
   role: 'admin' | 'user'
   permissions?: string[]
+  lastLogin?: Date
 }
 
 export interface AuthTokens {

@@ -1,6 +1,6 @@
 // UI Components - Export all reusable components
 export { Button } from './Button'
-export { Input } from './Input'
+export { Input, type InputProps } from './Input'
 export { Select, type SelectOption } from './select'
 export {
   Card,

@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 // import { Button } from '../ui/Button'
 import { toast } from 'react-hot-toast'
 

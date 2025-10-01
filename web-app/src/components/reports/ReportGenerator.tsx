@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { Button } from '../ui/Button'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { StatisticsChart } from '../analytics/StatisticsChart'

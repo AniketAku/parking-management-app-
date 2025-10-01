@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react'
 import { Button } from '../ui/Button'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { seedBusinessSettings, checkBusinessSettingsStatus } from '../../utils/seedBusinessSettings'
 
 interface SeedingStatus {

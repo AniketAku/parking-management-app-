@@ -16,7 +16,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { formatCurrency } from '../../utils/helpers'
 
 interface ChartData {

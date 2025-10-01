@@ -46,7 +46,7 @@ export default function PasswordChangeDialog({ isOpen, onClose }: PasswordChange
     setIsSubmitting(true)
     try {
       await changePassword({
-        currentPassword: formData.currentPassword,
+        oldPassword: formData.currentPassword,
         newPassword: formData.newPassword
       })
       

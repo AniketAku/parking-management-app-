@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { ShiftLinkingState, ShiftLinkingMetrics } from '../../hooks/useShiftLinking'
 import { ShiftReportService, ShiftReportData } from '../../services/ShiftReportService'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { Button } from '../ui/Button'
 import toast from 'react-hot-toast'
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'

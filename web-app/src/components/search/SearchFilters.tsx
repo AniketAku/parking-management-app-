@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { Input, Select } from '../ui'
 import type { SearchFilters as SearchFiltersType } from '../../types'
 

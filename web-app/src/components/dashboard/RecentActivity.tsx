@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 // import { Button } from '../ui/Button'
 import { formatDateTime, getVehicleTypeColor, getRevenueAmount, formatCurrency, calculateParkingFee } from '../../utils/helpers'
 import { isCurrentlyParked } from '../../utils/statusHelpers'

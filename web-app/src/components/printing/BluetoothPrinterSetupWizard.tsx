@@ -17,7 +17,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { Button } from '../ui/Button'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { Input } from '../ui/Input'
 import { Select } from '../ui/Select'
 import StepIndicator, { type Step } from '../ui/StepIndicator'

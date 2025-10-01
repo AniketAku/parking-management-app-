@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { Button } from '../ui/Button'
 import { databaseMigrationService, type SchemaValidationResult, type MigrationResult } from '../../services/databaseMigrationService'
 import { toast } from 'react-hot-toast'

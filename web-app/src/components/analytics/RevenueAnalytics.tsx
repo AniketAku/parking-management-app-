@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { StatisticsChart } from './StatisticsChart'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { Badge } from '../ui/Badge'
 import { Select } from '../ui'
 import { formatCurrency, getRevenueAmount } from '../../utils/helpers'

@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo, useCallback, memo, useRef } from 'react'
 import { FixedSizeList as List, areEqual } from 'react-window'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { Badge, StatusBadge } from '../ui/Badge'
 import { useBusinessSettings } from '../../hooks/useSettings'
 import { useRenderPerformance } from '../../hooks/usePerformance'

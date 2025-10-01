@@ -1,7 +1,7 @@
 import React from 'react'
 import type { ComponentWithClassName, ComponentWithTestId } from '../../types'
 
-interface InputProps extends ComponentWithClassName, ComponentWithTestId {
+export interface InputProps extends ComponentWithClassName, ComponentWithTestId {
   label?: string
   type?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'search'
   placeholder?: string

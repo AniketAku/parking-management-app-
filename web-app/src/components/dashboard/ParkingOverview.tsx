@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 // import { Button } from '../ui/Button'
 import { getVehicleTypeColor, calculateDuration } from '../../utils/helpers'
 import { isCurrentlyParked } from '../../utils/statusHelpers'

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { useParkingStore } from '../../stores/parkingStore'
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns'
 import { getRevenueAmount, formatCurrency } from '../../utils/helpers'

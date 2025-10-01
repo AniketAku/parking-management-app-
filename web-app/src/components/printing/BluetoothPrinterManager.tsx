@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '../ui/Button'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { Plus, Bluetooth, Settings } from 'lucide-react'
 import type { BluetoothDevice, BluetoothPrinterStatus, BluetoothPrinterProfile } from '../../types/bluetoothPrinter'
 import printService from '../../services/printService'

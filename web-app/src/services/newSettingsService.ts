@@ -535,6 +535,125 @@ class NewSettingsService {
       return []
     }
   }
+
+  // ================================================
+  // ADVANCED ADMIN METHODS
+  // ================================================
+
+  /**
+   * Get audit log for settings changes
+   */
+  async getAuditLog(): Promise<any[]> {
+    try {
+      // Mock implementation - replace with actual audit table query
+      return []
+    } catch (error) {
+      console.error('Error getting audit log:', error)
+      return []
+    }
+  }
+
+  /**
+   * Get available settings templates
+   */
+  async getTemplates(): Promise<any[]> {
+    try {
+      // Mock implementation - replace with actual templates query
+      return []
+    } catch (error) {
+      console.error('Error getting templates:', error)
+      return []
+    }
+  }
+
+  /**
+   * Export settings to file
+   */
+  async exportSettings(categories?: SettingCategory[]): Promise<{ success: boolean; data?: string; error?: string }> {
+    try {
+      const categoriesToExport = categories || ['business', 'ui_theme', 'system', 'localization']
+      const exportData: Record<string, any> = {}
+
+      for (const category of categoriesToExport) {
+        const settings = await this.getCategorySettings(category)
+        exportData[category] = settings
+      }
+
+      return {
+        success: true,
+        data: JSON.stringify(exportData, null, 2)
+      }
+    } catch (error) {
+      console.error('Error exporting settings:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Export failed'
+      }
+    }
+  }
+
+  /**
+   * Import settings from data
+   */
+  async importSettings(data: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!data || typeof data !== 'object') {
+        return { success: false, error: 'Invalid import data' }
+      }
+
+      for (const [category, settings] of Object.entries(data)) {
+        if (typeof settings === 'object' && settings !== null) {
+          await this.updateCategorySettings(category as SettingCategory, settings)
+        }
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('Error importing settings:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Import failed'
+      }
+    }
+  }
+
+  /**
+   * Reset category to default values
+   */
+  async resetCategoryToDefaults(category: SettingCategory): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Mock implementation - would need default values configuration
+      console.warn(`Reset to defaults not implemented for category: ${category}`)
+      return { success: false, error: 'Reset to defaults not implemented' }
+    } catch (error) {
+      console.error('Error resetting category:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Reset failed'
+      }
+    }
+  }
+
+  /**
+   * Bulk edit multiple settings
+   */
+  async bulkEditSettings(operations: any[]): Promise<{ success: boolean; error?: string }> {
+    try {
+      for (const operation of operations) {
+        if (operation.category && operation.key && operation.value !== undefined) {
+          await this.updateSetting(operation.category, operation.key, operation.value)
+        }
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('Error in bulk edit:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Bulk edit failed'
+      }
+    }
+  }
 }
 
 // ================================================

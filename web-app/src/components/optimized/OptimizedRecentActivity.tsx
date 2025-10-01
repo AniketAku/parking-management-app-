@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useCallback, memo } from 'react'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { formatDateTime, getVehicleTypeColor, getRevenueAmount, formatCurrency } from '../../utils/helpers'
 import { useRenderPerformance } from '../../hooks/usePerformance'
 import type { ParkingEntry } from '../../types'

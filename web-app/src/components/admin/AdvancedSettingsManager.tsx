@@ -7,7 +7,7 @@ import {
 import { Button } from '../ui'
 import { Card, CardContent } from '../ui'
 import { Input } from '../ui'
-import { useSettings } from '../../hooks/useSettings'
+import { useAllSettings } from '../../hooks/useAllSettings'
 import { usePermissions } from '../../hooks/useAuth'
 import { settingsService } from '../../services/settingsService'
 import type { 
@@ -102,7 +102,7 @@ interface AdvancedSettingsManagerProps {
 export const AdvancedSettingsManager: React.FC<AdvancedSettingsManagerProps> = ({
   onClose
 }) => {
-  const { settings, loading, updateSetting, refresh } = useSettings()
+  const { settings, loading, updateSetting, refresh } = useAllSettings()
   const permissions = usePermissions()
   
   // UI State
@@ -142,7 +142,7 @@ export const AdvancedSettingsManager: React.FC<AdvancedSettingsManagerProps> = (
   const filteredSettings = useMemo(() => {
     if (!settings) return []
     
-    return settings.filter(setting => {
+    return settings.filter((setting: Setting) => {
       // Category filter
       if (setting.category !== activeCategory) return false
       
@@ -195,7 +195,7 @@ export const AdvancedSettingsManager: React.FC<AdvancedSettingsManagerProps> = (
   const applyPendingChanges = async () => {
     try {
       const updates = Array.from(pendingChanges.entries()).map(([key, value]) => {
-        const setting = settings?.find(s => s.key === key)
+        const setting = settings?.find((s: Setting) => s.key === key)
         return setting ? updateSetting(key, value, setting.level) : null
       }).filter(Boolean)
       
@@ -273,7 +273,7 @@ export const AdvancedSettingsManager: React.FC<AdvancedSettingsManagerProps> = (
   const applyBulkOperation = async (operation: BulkEditOperation) => {
     try {
       const selectedSettingsList = Array.from(selectedSettings)
-        .map(key => settings?.find(s => s.key === key))
+        .map(key => settings?.find((s: Setting) => s.key === key))
         .filter(Boolean) as Setting[]
       
       await settingsService.bulkEditSettings(selectedSettingsList, operation)
@@ -445,7 +445,7 @@ export const AdvancedSettingsManager: React.FC<AdvancedSettingsManagerProps> = (
                       p-1.5 rounded-md text-white text-xs
                       ${config.color}
                     `}>
-                      <Icon className="w-3 h-3" />
+                      {React.createElement(config.icon, { className: "w-3 h-3" })}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate">
@@ -513,7 +513,7 @@ export const AdvancedSettingsManager: React.FC<AdvancedSettingsManagerProps> = (
             
             {/* Settings Grid */}
             <div className="grid gap-4">
-              {filteredSettings.map((setting) => (
+              {filteredSettings.map((setting: Setting) => (
                 <SettingCard
                   key={setting.key}
                   setting={setting}
@@ -565,14 +565,14 @@ export const AdvancedSettingsManager: React.FC<AdvancedSettingsManagerProps> = (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => applyBulkOperation({ type: 'reset_to_default' })}
+                onClick={() => applyBulkOperation({ key: 'bulk_reset', success: true, type: 'reset_to_default' })}
               >
                 Reset to Default
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => applyBulkOperation({ type: 'export' })}
+                onClick={() => applyBulkOperation({ key: 'bulk_export', success: true, type: 'export' })}
               >
                 Export Selected
               </Button>

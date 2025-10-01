@@ -1,7 +1,7 @@
 import React from 'react'
 import { VehicleExitForm } from '../components/forms/VehicleExitForm'
 import { useParkingData } from '../hooks/useParkingData'
-import { Card, CardHeader, CardContent } from '../components/ui/Card'
+import { Card, CardHeader, CardContent } from '../components/ui'
 
 export const ExitPage: React.FC = () => {
   // Load real parking data from database

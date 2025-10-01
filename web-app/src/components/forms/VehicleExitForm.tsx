@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '../ui/Button'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { PrintModal } from '../printing'
 import { PrintButton } from '../printing/PrintButton'
 import { useParkingData } from '../../hooks/useParkingData'

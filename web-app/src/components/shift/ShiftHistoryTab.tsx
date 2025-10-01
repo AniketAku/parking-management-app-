@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ShiftLinkingState, ShiftLinkingMetrics } from '../../hooks/useShiftLinking'
-import { Card, CardHeader, CardContent } from '../ui/Card'
+import { Card, CardHeader, CardContent } from '../ui'
 import { Button } from '../ui/Button'
 import toast from 'react-hot-toast'
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInHours, differenceInMinutes } from 'date-fns'

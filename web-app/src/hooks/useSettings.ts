@@ -356,6 +356,98 @@ export function useCurrencyFormatter(options?: UseSettingsOptions) {
 }
 
 // ================================================
+// ADVANCED SETTINGS HOOKS
+// ================================================
+
+/**
+ * Hook for searching settings
+ */
+export function useSettingsSearch() {
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const search = useCallback(async (query: string, category?: SettingCategory) => {
+    setLoading(true)
+    setError(null)
+    try {
+      // Mock search implementation - replace with actual service call
+      setSearchResults([])
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Search failed'
+      setError(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return {
+    searchResults,
+    loading,
+    error,
+    search
+  }
+}
+
+/**
+ * Hook for exporting settings
+ */
+export function useSettingsExport() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const exportSettings = useCallback(async (categories?: SettingCategory[]) => {
+    setLoading(true)
+    setError(null)
+    try {
+      // Mock export implementation - replace with actual service call
+      return { success: true }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Export failed'
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return {
+    loading,
+    error,
+    exportSettings
+  }
+}
+
+/**
+ * Hook for importing settings
+ */
+export function useSettingsImport() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const importSettings = useCallback(async (data: any) => {
+    setLoading(true)
+    setError(null)
+    try {
+      // Mock import implementation - replace with actual service call
+      return { success: true }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Import failed'
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return {
+    loading,
+    error,
+    importSettings
+  }
+}
+
+// ================================================
 // SETTINGS CACHE HOOK
 // ================================================
 
