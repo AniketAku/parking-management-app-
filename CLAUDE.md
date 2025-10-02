@@ -4,14 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains both a Python desktop application and a React web application for parking management:
+This repository contains a **React/TypeScript web application** for parking management, built with modern web technologies and deployed on Vercel.
 
-1. **Python Desktop App**: CustomTkinter-based GUI application (root directory)
-2. **React Web App**: Modern web application located in `/web-app/` subdirectory
+**Tech Stack:**
+- React 18 with TypeScript
+- Vite for build tooling
+- Supabase for backend and database
+- TailwindCSS for styling
+- Deployed on Vercel
 
 ## Development Commands
 
-### Web Application (Primary)
+### Web Application
 ```bash
 # Development server (from root)
 npm run dev
@@ -30,110 +34,95 @@ npm run install-deps
 cd web-app && npm install
 ```
 
-### Python Desktop Application
-```bash
-# Run the application (main entry point)
-python main.py
-
-# Run with virtual environment
-venv\Scripts\activate  # Windows
-python main.py
-
-# Build executable using PyInstaller
-pyinstaller ParkingSystemApp.spec
-```
-
 ### Project Structure
-- **`/web-app/`**: React/Vite web application (main development focus)
-- **Root directory**: Python desktop application and project documentation
-- **`vercel.json`**: Deployment configuration for web app
+- **`/web-app/`**: React/Vite web application (main application)
+- **`/database/`**: SQL schemas, migrations, and database functions
+- **`/scripts/`**: Deployment and setup scripts
+- **`/docs/`**: Technical documentation and architecture guides
+- **`vercel.json`**: Deployment configuration
 
 ## Architecture Overview
 
-### Core Components
+### Tech Stack
 
-**MVC-Style Architecture:**
-- **Models**: Data structures and business logic (`models/`)
-- **Views**: UI components and user interface (`ui/`)
-- **Services**: Data persistence and business operations (`services/`)
+**Frontend:**
+- React 18 with TypeScript
+- Vite for fast development and optimized builds
+- TailwindCSS for utility-first styling
+- React Router for navigation
 
-### Key Architecture Patterns
+**Backend:**
+- Supabase (PostgreSQL database)
+- Real-time subscriptions for live updates
+- Row Level Security (RLS) for data protection
+- Serverless Edge Functions
 
-**1. Observer Pattern for Data Updates**
-- `ParkingApp` implements data update notification system
-- Views register callbacks via `register_data_updated_callback()`
-- Data changes trigger `notify_data_updated()` to refresh all views
+**Deployment:**
+- Vercel for hosting and CDN
+- Automatic deployments from Git
+- Environment variable management
 
-**2. View Management System**
-- Central view switching in `ParkingApp.show_view()`
-- Views are initialized once and shown/hidden as needed
-- Each view has specific preparation methods (e.g., `prepare_form()`, `reset_form()`)
+### Key Features
 
-**3. Service Layer Pattern**
-- `DataService` provides static methods for all data operations
-- Automatic backup creation before data modifications
-- JSON-based persistence with error handling and data validation
+**1. Real-time Data Synchronization**
+- Supabase real-time subscriptions for live updates
+- Optimistic UI updates for better UX
+- Conflict resolution for concurrent updates
 
-### Data Flow
+**2. Authentication & Authorization**
+- Supabase Auth for user management
+- Role-based access control (RBAC)
+- Row Level Security policies
 
-1. **Entry Creation**: `ui/views/entry.py` → `models/entry.py` → `services/data_service.py` → `parking_data.json`
-2. **Exit Processing**: `ui/views/exit.py` → Fee calculation → Status update → Data persistence
-3. **Statistics**: Real-time calculation from current data set via `DataService.get_statistics()`
-4. **Search**: Live filtering of loaded entries with multiple criteria
+**3. Business Logic**
+- Fee calculation based on vehicle type and duration
+- Shift management with handover workflows
+- Comprehensive reporting and analytics
 
-### Critical Business Logic
+## Development Guidelines
 
-**Fee Calculation Algorithm** (`models/entry.py`):
-- Daily rate-based pricing from `config.py` RATES
-- Automatic calculation based on entry/exit time difference
-- Supports overstay detection and penalty logic
+### Adding New Features
+1. Design database schema in `/database/tables/`
+2. Create migration scripts in `/database/migrations/`
+3. Implement React components in `/web-app/src/components/`
+4. Add API integration in `/web-app/src/services/`
+5. Update routes in `/web-app/src/App.tsx`
 
-**Data Integrity**:
-- Automatic backup creation before any data modification
-- Entry identification by vehicle_number + entry_time combination
-- Last modified timestamps for audit trail
+### Database Changes
+1. Create migration SQL file in `/database/migrations/`
+2. Test migration locally using Supabase CLI
+3. Deploy using deployment scripts in `/database/`
+4. Update TypeScript types to match schema
 
-## Configuration System
+### Component Development
+- Follow React best practices and hooks patterns
+- Use TypeScript for type safety
+- Implement proper error boundaries
+- Add loading states and error handling
+- Ensure responsive design with TailwindCSS
 
-**Central Configuration** (`config.py`):
-- Vehicle types and daily rates
-- UI color schemes and styling
-- Business logic settings (overstay limits, penalties)
-- Payment types and status options
+## File Structure
 
-**Customization Points**:
-- `RATES`: Daily parking fees by vehicle type
-- `COLORS`: Complete UI color scheme
-- `AppSettings`: Business rules and limits
+### Root Directory
+- `package.json`: Root package config with workspace scripts
+- `vercel.json`: Vercel deployment configuration
+- `tailwind.config.js`: TailwindCSS configuration
 
-## Development Considerations
+### Web App (`/web-app/`)
+- `src/components/`: React UI components
+- `src/services/`: API and business logic
+- `src/pages/`: Page-level components
+- `src/hooks/`: Custom React hooks
+- `src/types/`: TypeScript type definitions
 
-### Adding New Views
-1. Create view class in `ui/views/`
-2. Register in `ParkingApp._initialize_views()`
-3. Add navigation method in `ParkingApp`
-4. Update `NavigationPanel` for menu access
+### Database (`/database/`)
+- `tables/`: Table schema definitions
+- `migrations/`: Database migration scripts
+- `functions/`: PostgreSQL functions and triggers
+- `deploy_*.sql`: Deployment scripts
 
-### Extending Data Model
-1. Update `ParkingEntry` class in `models/entry.py`
-2. Modify `to_dict()` and constructor for JSON serialization
-3. Update database operations in `DataService`
-4. Refresh UI forms to handle new fields
-
-### UI Component Development
-- Follow CustomTkinter patterns established in `ui/components/`
-- Use color constants from `config.py` for consistency
-- Implement proper grid layouts for responsive design
-- Register data update callbacks for real-time updates
-
-## File Structure Notes
-
-- `main.py`: Application entry point and initialization
-- `config.py`: Centralized configuration and constants
-- `models/entry.py`: Core data model with business logic
-- `services/data_service.py`: Data persistence and operations
-- `ui/app.py`: Main application controller and view management
-- `ui/views/`: Individual application screens
-- `ui/components/`: Reusable UI components
-- `parking_data.json`: JSON-based data storage
-- `ParkingSystemApp.spec`: PyInstaller build configuration
+### Documentation (`/docs/`)
+- Architecture documentation
+- API integration guides
+- Migration strategies
+- Testing procedures
