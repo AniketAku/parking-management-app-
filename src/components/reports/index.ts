@@ -1,1 +1,0 @@
-export { ReportGenerator } from './ReportGenerator'

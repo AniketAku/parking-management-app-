@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Supabase Connection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h2>Supabase Connection Test</h2>
+    <div id="results"></div>
+    <button onclick="testConnection()">Test Connection</button>
+    <button onclick="testUserQuery()">Test User Query</button>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://rmgetmgtplhdiqlsivnb.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtZ2V0bWd0cGxoZGlxbHNpdm5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDAzODcsImV4cCI6MjA3MTAxNjM4N30.vXbDc2P3JQeRhDhL24Bs3xKa8B3Y3Y5a8Kh7tOIEZww'
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey)
+        
+        function log(message) {
+            const resultsDiv = document.getElementById('results')
+            resultsDiv.innerHTML += `<div style="margin: 5px 0; padding: 5px; background: #f8f9fa; border: 1px solid #dee2e6;">${message}</div>`
+            console.log(message)
+        }
+
+        async function testConnection() {
+            log('🔍 Testing basic Supabase connection...')
+            
+            try {
+                // Test basic connection by checking schema
+                const { data, error } = await supabase.from('users').select('count', { count: 'exact' }).limit(0)
+                
+                if (error) {
+                    log(`❌ Connection failed: ${error.message}`)
+                    return false
+                } else {
+                    log(`✅ Connection successful! User count: ${data?.length || 'unknown'}`)
+                    return true
+                }
+            } catch (networkError) {
+                log(`❌ Network error: ${networkError.message}`)
+                return false
+            }
+        }
+
+        async function testUserQuery() {
+            log('🔍 Testing user query for Aniket123...')
+            
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .or('username.eq.Aniket123,email.eq.Aniket123')
+                    .single()
+                
+                if (error) {
+                    log(`❌ User query failed: ${error.message} (Code: ${error.code})`)
+                    
+                    if (error.code === 'PGRST116') {
+                        log('🔍 PGRST116 means no rows returned - user not found')
+                    }
+                } else {
+                    log(`✅ User found: ${JSON.stringify(data, null, 2)}`)
+                    
+                    // Test password verification
+                    if (data.password_hash) {
+                        log('🔍 Testing password verification...')
+                        await testPasswordVerification('12345678', data.password_hash)
+                    }
+                }
+            } catch (networkError) {
+                log(`❌ Network error in user query: ${networkError.message}`)
+            }
+        }
+
+        async function testPasswordVerification(password, storedHash) {
+            try {
+                log(`🔍 Testing password: "${password}"`)
+                log(`🔍 Against hash: ${storedHash}`)
+                
+                // Compute SHA-256
+                const encoder = new TextEncoder()
+                const data = encoder.encode(password)
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+                const hashArray = Array.from(new Uint8Array(hashBuffer))
+                const computedHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+                
+                log(`🔍 Computed SHA-256: ${computedHash}`)
+                
+                const isMatch = computedHash.toLowerCase() === storedHash.toLowerCase()
+                log(`🔍 Password match: ${isMatch ? '✅ YES' : '❌ NO'}`)
+                
+                return isMatch
+            } catch (error) {
+                log(`❌ Password verification error: ${error.message}`)
+                return false
+            }
+        }
+    </script>
+</body>
+</html>

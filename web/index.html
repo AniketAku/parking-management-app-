@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shree Sai Vansh Truck Parking - Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="ticket-print.css">
+</head>
+<body>
+    <!-- Main Application Container -->
+    <div id="app" class="app-container">
+        <!-- Navigation Header -->
+        <nav class="nav-header">
+            <div class="nav-brand">
+                <h1>Shree Sai Vansh Truck Parking</h1>
+                <span class="nav-location">@Additional MIDC Mandwa</span>
+            </div>
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="showView('entry')">New Entry</button>
+                <button class="nav-btn" onclick="showView('exit')">Vehicle Exit</button>
+                <button class="nav-btn" onclick="showView('dashboard')">Dashboard</button>
+                <button class="nav-btn" onclick="showView('search')">Search</button>
+            </div>
+        </nav>
+
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="view active">
+            <div class="dashboard-header">
+                <h2>Parking Dashboard</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3 id="total-parked">0</h3>
+                        <p>Currently Parked</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="today-entries">0</h3>
+                        <p>Today's Entries</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="today-revenue">₹0</h3>
+                        <p>Today's Revenue</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="total-vehicles">0</h3>
+                        <p>Total Vehicles</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="recent-entries">
+                <h3>Recent Entries</h3>
+                <div id="recent-entries-list" class="entries-list">
+                    <!-- Recent entries will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Entry View -->
+        <div id="entry-view" class="view">
+            <div class="form-container">
+                <h2>New Vehicle Entry</h2>
+                <form id="entry-form" class="entry-form">
+                    <div class="form-group">
+                        <label for="transport-name">Transport Name *</label>
+                        <input type="text" id="transport-name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="vehicle-type">Vehicle Type *</label>
+                        <select id="vehicle-type" required>
+                            <option value="">Select Vehicle Type</option>
+                            <option value="Trailer">Trailer - ₹225/day</option>
+                            <option value="6 Wheeler">6 Wheeler - ₹150/day</option>
+                            <option value="4 Wheeler">4 Wheeler - ₹100/day</option>
+                            <option value="2 Wheeler">2 Wheeler - ₹50/day</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="vehicle-number">Vehicle Number *</label>
+                        <input type="text" id="vehicle-number" placeholder="e.g., MH-12-AB-1234" required style="text-transform: uppercase;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="driver-name">Driver Name</label>
+                        <input type="text" id="driver-name" placeholder="Driver Name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="driver-phone">Driver Phone</label>
+                        <input type="tel" id="driver-phone" placeholder="Mobile Number">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes">Notes</label>
+                        <textarea id="notes" placeholder="Additional notes"></textarea>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="button" onclick="clearForm()">Clear Form</button>
+                        <button type="submit" class="primary">Submit Entry</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Exit View -->
+        <div id="exit-view" class="view">
+            <div class="form-container">
+                <h2>Vehicle Exit</h2>
+                
+                <div class="search-section">
+                    <div class="form-group">
+                        <label for="exit-vehicle-search">Vehicle Number</label>
+                        <div class="search-input-group">
+                            <input type="text" id="exit-vehicle-search" placeholder="Enter vehicle number" style="text-transform: uppercase;">
+                            <button type="button" onclick="searchVehicleForExit()">Search</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="exit-details" class="exit-details" style="display: none;">
+                    <h3>Vehicle Details</h3>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <label>Transport Name:</label>
+                            <span id="exit-transport-name"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Vehicle Number:</label>
+                            <span id="exit-vehicle-number"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Vehicle Type:</label>
+                            <span id="exit-vehicle-type"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Entry Time:</label>
+                            <span id="exit-entry-time"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Days Elapsed:</label>
+                            <span id="exit-days-elapsed"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Daily Rate:</label>
+                            <span id="exit-daily-rate"></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Calculated Fee:</label>
+                            <span id="exit-calculated-fee"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-section">
+                        <div class="form-group">
+                            <label for="manual-fee">Manual Fee Override</label>
+                            <input type="number" id="manual-fee" placeholder="Enter custom amount">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="payment-status">Payment Status</label>
+                            <select id="payment-status">
+                                <option value="Paid">Paid</option>
+                                <option value="Unpaid">Unpaid</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="payment-type">Payment Type</label>
+                            <select id="payment-type">
+                                <option value="Cash">Cash</option>
+                                <option value="Online">Online</option>
+                                <option value="Card">Card</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-buttons">
+                            <button type="button" onclick="hideExitDetails()">Cancel</button>
+                            <button type="button" onclick="processExit()" class="primary">Confirm Exit</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search View -->
+        <div id="search-view" class="view">
+            <div class="search-container">
+                <h2>Search Vehicles</h2>
+                
+                <div class="search-filters">
+                    <div class="form-group">
+                        <label for="search-vehicle-number">Vehicle Number</label>
+                        <input type="text" id="search-vehicle-number" placeholder="Enter vehicle number">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="search-status">Status</label>
+                        <select id="search-status">
+                            <option value="">All Statuses</option>
+                            <option value="Parked">Currently Parked</option>
+                            <option value="Exited">Exited</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="search-date">Date</label>
+                        <input type="date" id="search-date">
+                    </div>
+                    
+                    <button type="button" onclick="searchVehicles()" class="primary">Search</button>
+                    <button type="button" onclick="clearSearch()">Clear</button>
+                </div>
+                
+                <div id="search-results" class="search-results">
+                    <!-- Search results will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Print Modal -->
+    <div id="ticket-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Print Ticket</h3>
+                <button class="close-modal" onclick="closeTicketModal()">&times;</button>
+            </div>
+            
+            <div class="print-options">
+                <div class="form-group">
+                    <label for="ticket-type">Ticket Type</label>
+                    <select id="ticket-type">
+                        <option value="entry">Entry Ticket</option>
+                        <option value="exit">Exit Receipt</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="print-copies">Number of Copies</label>
+                    <select id="print-copies">
+                        <option value="1">1 Copy</option>
+                        <option value="2" selected>2 Copies</option>
+                        <option value="3">3 Copies</option>
+                    </select>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="button" onclick="closeTicketModal()">Cancel</button>
+                    <button type="button" onclick="printTicket()" class="primary">Print Ticket</button>
+                </div>
+            </div>
+            
+            <!-- Ticket Preview -->
+            <div id="ticket-preview" class="ticket-preview">
+                <!-- Ticket content will be generated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="parking-data.js"></script>
+    <script src="ticket-generator.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

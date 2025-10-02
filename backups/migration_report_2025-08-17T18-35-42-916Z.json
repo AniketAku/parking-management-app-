@@ -1,0 +1,9 @@
+{
+  "migration_timestamp": "2025-08-17T18:35:42.916Z",
+  "original_records": 2,
+  "inserted_records": 2,
+  "success_rate": "100.00%",
+  "backup_file": "C:\\Users\\Aniket\\OneDrive\\Desktop\\Parking App\\backups\\parking_data_backup_2025-08-17T18-35-40-447Z.json",
+  "errors": [],
+  "status": "SUCCESS"
+}

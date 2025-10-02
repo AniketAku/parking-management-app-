@@ -1,0 +1,304 @@
+name: UI Testing Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ui-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install system dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Create test directories
+      run: |
+        mkdir -p reports/coverage
+        mkdir -p tests/baselines
+        mkdir -p tests/current
+
+    - name: Run unit tests
+      run: |
+        pytest tests/unit/ -v --cov=src/desktop/ui --cov-report=xml --junit-xml=reports/unit-tests.xml
+      env:
+        DISPLAY: ':99.0'
+        QT_QPA_PLATFORM: 'offscreen'
+      if: runner.os == 'Linux'
+      
+    - name: Run unit tests (Windows/macOS)
+      run: |
+        pytest tests/unit/ -v --cov=src/desktop/ui --cov-report=xml --junit-xml=reports/unit-tests.xml
+      if: runner.os != 'Linux'
+
+    - name: Run integration tests
+      run: |
+        pytest tests/integration/ -v --junit-xml=reports/integration-tests.xml
+      env:
+        DISPLAY: ':99.0'
+        QT_QPA_PLATFORM: 'offscreen'
+      if: runner.os == 'Linux'
+
+    - name: Run integration tests (Windows/macOS)
+      run: |
+        pytest tests/integration/ -v --junit-xml=reports/integration-tests.xml
+      if: runner.os != 'Linux'
+
+    - name: Run accessibility tests
+      run: |
+        pytest tests/accessibility/ -v --junit-xml=reports/accessibility-tests.xml
+      env:
+        DISPLAY: ':99.0'
+        QT_QPA_PLATFORM: 'offscreen'
+      if: runner.os == 'Linux'
+
+    - name: Run accessibility tests (Windows/macOS)
+      run: |
+        pytest tests/accessibility/ -v --junit-xml=reports/accessibility-tests.xml
+      if: runner.os != 'Linux'
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./reports/coverage.xml
+        flags: ui-tests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
+        path: |
+          reports/
+          tests/current/
+
+    - name: Publish test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Test Results (${{ matrix.os }}, Python ${{ matrix.python-version }})
+        path: 'reports/*.xml'
+        reporter: java-junit
+        fail-on-error: false
+
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: ui-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Run performance tests
+      run: |
+        pytest tests/performance/ -v --benchmark-html=reports/performance-report.html --junit-xml=reports/performance-tests.xml
+      env:
+        DISPLAY: ':99.0'
+        QT_QPA_PLATFORM: 'offscreen'
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results
+        path: reports/performance-report.html
+
+  visual-regression-tests:
+    runs-on: ubuntu-latest
+    needs: ui-tests
+    if: github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Download baseline images
+      uses: actions/download-artifact@v3
+      with:
+        name: visual-baselines
+        path: tests/baselines/
+      continue-on-error: true
+
+    - name: Run visual regression tests
+      run: |
+        pytest tests/visual/ -v --junit-xml=reports/visual-tests.xml
+      env:
+        DISPLAY: ':99.0'
+        QT_QPA_PLATFORM: 'offscreen'
+
+    - name: Upload visual test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: visual-test-results
+        path: |
+          tests/current/
+          tests/baselines/
+          reports/visual-tests.xml
+
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-test.txt
+
+    - name: Run linting
+      run: |
+        flake8 src/desktop/ui tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 src/desktop/ui tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Run type checking
+      run: |
+        mypy src/desktop/ui --ignore-missing-imports --no-strict-optional
+
+    - name: Check code formatting
+      run: |
+        black --check src/desktop/ui tests/
+        isort --check-only src/desktop/ui tests/
+
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+
+    - name: Run security scan
+      run: |
+        bandit -r src/desktop/ui -f json -o reports/bandit-report.json
+        safety check --json --output reports/safety-report.json
+      continue-on-error: true
+
+    - name: Upload security results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: reports/
+
+  deploy-test-results:
+    runs-on: ubuntu-latest
+    needs: [ui-tests, performance-tests, visual-regression-tests, code-quality]
+    if: always()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts/
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: artifacts/
+        destination_dir: test-reports/${{ github.sha }}
+
+    - name: Create status check
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { context, github } = require('@actions/github');
+          const { owner, repo } = context.repo;
+          const sha = context.sha;
+          
+          await github.rest.repos.createCommitStatus({
+            owner,
+            repo,
+            sha,
+            state: 'success',
+            target_url: `https://${owner}.github.io/${repo}/test-reports/${sha}/`,
+            description: 'UI test results available',
+            context: 'UI Tests'
+          });

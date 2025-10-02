@@ -1,0 +1,12 @@
+Vehicle Number,Transport Name,Vehicle Type,Driver Name,Entry Time,Exit Time,Status,Payment Status,Amount Paid,Calculated Fee,Duration,Notes
+"NL01AZ9898","SDH","Trailer","Hsjs","22 Aug 2025, 10:42 pm","","Parked","Unpaid","","225","42m",""
+"MH40CX8822","ABCV","Trailer","ASdad","22 Aug 2025, 09:35 pm","22 Aug 2025, 09:35 pm","Exited","Paid","","100","0m",""
+"KA05MN1234","IVC","Trailer","Rajesh Kumar","22 Aug 2025, 04:37 pm","22 Aug 2025, 04:37 pm","Exited","Paid","","125","0m",""
+"MH40CX8822","dsaj","Trailer","alkjsdh","22 Aug 2025, 03:31 pm","22 Aug 2025, 03:31 pm","Exited","Paid","","225","0m",""
+"MH49AS1234","MH49AS1234","Trailer","asd","22 Aug 2025, 03:00 pm","22 Aug 2025, 03:00 pm","Exited","Paid","","225","0m",""
+"MH49AS1234","IVC","Trailer","sda","22 Aug 2025, 11:45 am","22 Aug 2025, 11:45 am","Exited","Paid","","225","0m",""
+"MJ76AS1234","sdk","Trailer","dsa","21 Aug 2025, 11:40 pm","21 Aug 2025, 11:41 pm","Exited","Paid","","225","0m",""
+"MH40CX8822","IVC","Trailer","spaihd","21 Aug 2025, 05:11 pm","21 Aug 2025, 05:58 pm","Exited","Paid","","225","46m",""
+"MH12SA6521","Xuhj","Trailer","sdda","21 Aug 2025, 03:57 pm","21 Aug 2025, 05:58 pm","Exited","Paid","","225","2h 1m",""
+"MH12SA6521","ABC","Trailer","sdads","21 Aug 2025, 03:42 pm","21 Aug 2025, 03:50 pm","Exited","Paid","","225","8m",""
+"MH40CX8822","IVC","Trailer","Asaoid","21 Aug 2025, 03:13 pm","21 Aug 2025, 03:32 pm","Exited","Paid","","225","18m",""

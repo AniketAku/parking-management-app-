@@ -1,7 +1,0 @@
-export { StatisticsChart } from './StatisticsChart'
-export { RevenueAnalytics } from './RevenueAnalytics'
-export { OccupancyAnalytics } from './OccupancyAnalytics'
-export { BusinessIntelligenceSystem } from './BusinessIntelligenceSystem'
-export { default as AdvancedDashboard } from './AdvancedDashboard'
-export { default as DailyAnalytics } from './DailyAnalytics'
-export { OptimizedAnalyticsDashboard } from './OptimizedAnalyticsDashboard'

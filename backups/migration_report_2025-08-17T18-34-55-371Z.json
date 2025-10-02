@@ -1,0 +1,14 @@
+{
+  "migration_timestamp": "2025-08-17T18:34:55.371Z",
+  "original_records": 2,
+  "inserted_records": 0,
+  "success_rate": "0.00%",
+  "backup_file": "C:\\Users\\Aniket\\OneDrive\\Desktop\\Parking App\\backups\\parking_data_backup_2025-08-17T18-34-54-159Z.json",
+  "errors": [
+    {
+      "batch": 1,
+      "error": "new row for relation \"parking_entries\" violates check constraint \"payment_type_consistency\""
+    }
+  ],
+  "status": "PARTIAL_SUCCESS"
+}

@@ -1,0 +1,45 @@
+{
+  "name": "parking-api-e2e-tests",
+  "version": "1.0.0",
+  "description": "End-to-end API testing with Puppeteer",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
+    "test:api": "jest --testPathPattern=api",
+    "test:websocket": "jest --testPathPattern=websocket",
+    "test:performance": "jest --testPathPattern=performance",
+    "test:auth": "jest --testPathPattern=auth"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.15.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "puppeteer": "^22.0.0",
+    "axios": "^1.6.0",
+    "ws": "^8.14.0",
+    "faker": "^6.6.6",
+    "dotenv": "^16.3.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testTimeout": 30000,
+    "setupFilesAfterEnv": ["<rootDir>/setup.ts"],
+    "testMatch": [
+      "**/__tests__/**/*.test.ts",
+      "**/*.test.ts"
+    ],
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/*.d.ts",
+      "!**/node_modules/**"
+    ]
+  }
+}

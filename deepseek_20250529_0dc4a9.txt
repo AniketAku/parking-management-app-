@@ -1,0 +1,19 @@
+parking_system/
+│── main.py                # Entry point
+│── config.py              # Configuration constants
+│── models/               # Data models
+│   └── entry.py          # Parking entry model
+│── services/             # Business logic
+│   └── data_service.py   # Data handling
+│── ui/                   # User interface components
+│   ├── app.py            # Main application class
+│   ├── components/       # Reusable UI components
+│   │   ├── header.py
+│   │   ├── nav.py
+│   │   ├── stats.py
+│   │   └── edit_dailog
+│   └── views/            # Application screens
+│       ├── home.py
+│       ├── entry.py
+│       ├── exit.py
+│       └── search.py

@@ -1,0 +1,30 @@
+[
+    {
+        "serial": 1,
+        "transport_name": "adsj",
+        "vehicle_type": "Trailer",
+        "vehicle_number": "1234",
+        "driver_name": "N/A",
+        "notes": "N/A",
+        "entry_time": "2025-05-29T12:50:08.471405",
+        "status": "Parked",
+        "parking_fee": 225.0,
+        "payment_status": "Unpaid",
+        "payment_type": "Cash",
+        "exit_time": "2025-05-29T13:51:44.546574"
+    },
+    {
+        "serial": 1,
+        "transport_name": "Aniket",
+        "vehicle_type": "Trailer",
+        "vehicle_number": "8822",
+        "driver_name": "N/A",
+        "notes": "N/A",
+        "entry_time": "2025-05-31T18:05:26.297116",
+        "status": "Parked",
+        "parking_fee": 0,
+        "payment_status": "Unpaid",
+        "payment_type": "N/A",
+        "exit_time": "N/A"
+    }
+]

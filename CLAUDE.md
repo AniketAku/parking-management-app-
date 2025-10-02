@@ -4,11 +4,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Python-based Parking Management System built with CustomTkinter for the GUI. The application manages truck/vehicle parking entries, exits, payments, and provides comprehensive statistics and search functionality.
+This repository contains both a Python desktop application and a React web application for parking management:
+
+1. **Python Desktop App**: CustomTkinter-based GUI application (root directory)
+2. **React Web App**: Modern web application located in `/web-app/` subdirectory
 
 ## Development Commands
 
-### Running the Application
+### Web Application (Primary)
+```bash
+# Development server (from root)
+npm run dev
+
+# Development server (from web-app directory)
+cd web-app && npm run dev
+
+# Build for production
+npm run build
+# or
+cd web-app && npm run build
+
+# Install dependencies
+npm run install-deps
+# or
+cd web-app && npm install
+```
+
+### Python Desktop Application
 ```bash
 # Run the application (main entry point)
 python main.py
@@ -16,21 +38,15 @@ python main.py
 # Run with virtual environment
 venv\Scripts\activate  # Windows
 python main.py
-```
 
-### Building Executable
-```bash
 # Build executable using PyInstaller
 pyinstaller ParkingSystemApp.spec
-
-# The executable will be created in dist/ directory
-# Includes all dependencies and UI components
 ```
 
-### Project Structure Dependencies
-- **CustomTkinter**: Modern UI framework for the GUI
-- **tkcalendar**: Date picker components
-- **JSON**: Data persistence (parking_data.json)
+### Project Structure
+- **`/web-app/`**: React/Vite web application (main development focus)
+- **Root directory**: Python desktop application and project documentation
+- **`vercel.json`**: Deployment configuration for web app
 
 ## Architecture Overview
 

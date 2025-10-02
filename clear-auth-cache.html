@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Authentication Cache</title>
+</head>
+<body>
+    <h2>Clear Authentication Cache</h2>
+    <p>This will clear all stored authentication data.</p>
+    <button onclick="clearCache()">Clear Cache</button>
+    <div id="result"></div>
+
+    <script>
+        function clearCache() {
+            // Clear localStorage
+            localStorage.removeItem('auth-storage')
+            localStorage.removeItem('auth_token')
+            
+            // Clear sessionStorage
+            sessionStorage.clear()
+            
+            // Clear any zustand persist data
+            const keys = Object.keys(localStorage)
+            keys.forEach(key => {
+                if (key.includes('auth') || key.includes('zustand')) {
+                    localStorage.removeItem(key)
+                }
+            })
+            
+            document.getElementById('result').innerHTML = '<p style="color: green;">✅ Authentication cache cleared! Please refresh your app page.</p>'
+            
+            console.log('✅ Authentication cache cleared')
+        }
+    </script>
+</body>
+</html>
