@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "cd web-app && npm run build:deploy",
   "outputDirectory": "web-app/dist",
   "installCommand": "npm run install-deps",
   "devCommand": "npm run dev",
