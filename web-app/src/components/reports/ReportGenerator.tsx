@@ -7,6 +7,7 @@ import { Button } from '../ui/Button'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { StatisticsChart } from '../analytics/StatisticsChart'
 import { reportService } from '../../services/reportGenerationService'
+import { reportExportService } from '../../services/reportExportService'
 import type {
   ReportType,
   QuickSelectOption,
@@ -223,7 +224,7 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
         includeExpenseDetails: dataInclusionCriteria.includeExpenses
       }
 
-      const result = await reportService.exportReport(state.currentReport, exportConfig)
+      const result = await reportExportService.exportReport(state.currentReport, exportConfig)
 
       if (result.success) {
         // Trigger download
@@ -383,482 +384,206 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
   return (
     <div className={`space-y-8 ${className}`}>
       {/* Report Configuration */}
-      <Card className="overflow-hidden shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 border-b">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-primary-500 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white text-2xl">📊</span>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-text-primary">Report Generator</h2>
-              <p className="text-text-secondary">Generate comprehensive parking reports with advanced filtering and analytics</p>
-            </div>
-          </div>
+      <Card className="shadow-sm border border-gray-200 dark:border-gray-700">
+        <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Report Configuration</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Configure and generate parking reports</p>
         </CardHeader>
 
-        <CardContent className="space-y-8 p-8">
+        <CardContent className="space-y-6 p-6">
           {/* Report Type Selection */}
-          <div className="space-y-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                <span className="text-primary-600 text-lg">📈</span>
-              </div>
-              <label className="text-xl font-semibold text-text-primary">Report Type</label>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Report Type</label>
+            <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-full">
               {(['daily', 'weekly', 'monthly', 'custom'] as ReportType[]).map((type) => {
                 const isSelected = state.selectedReportType === type
-                const icons = { daily: '📅', weekly: '📊', monthly: '📈', custom: '🔧' }
-                const descriptions = {
-                  daily: 'Single day insights',
-                  weekly: '7-day analysis',
-                  monthly: 'Monthly overview',
-                  custom: 'Flexible periods'
-                }
-
                 return (
-                  <label
+                  <button
                     key={type}
-                    className={`group relative flex flex-col p-3 md:p-6 border-2 rounded-xl md:rounded-2xl cursor-pointer transition-all duration-300 ${
+                    type="button"
+                    onClick={() => handleReportTypeChange(type)}
+                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
                       isSelected
-                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-xl shadow-primary-500/25 scale-[1.02]'
-                        : 'border-border-light hover:border-primary-300 hover:bg-surface-muted hover:shadow-lg hover:scale-[1.01]'
+                        ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                     }`}
                   >
-                    <input
-                      type="radio"
-                      name="reportType"
-                      value={type}
-                      checked={isSelected}
-                      onChange={(e) => handleReportTypeChange(e.target.value as ReportType)}
-                      className="sr-only"
-                    />
-
-                    {/* Icon and Title */}
-                    <div className="flex items-center space-x-2 md:space-x-3 mb-2 md:mb-3">
-                      <div className={`w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl flex items-center justify-center text-lg md:text-2xl transition-all duration-300 ${
-                        isSelected
-                          ? 'bg-primary-500 text-white shadow-lg'
-                          : 'bg-surface-muted group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30'
-                      }`}>
-                        {icons[type]}
-                      </div>
-                      <div className="flex-1">
-                        <div className={`font-bold text-sm md:text-lg capitalize transition-colors ${
-                          isSelected ? 'text-primary-600' : 'text-text-primary'
-                        }`}>
-                          {type}
-                        </div>
-                        <div className="text-xs md:text-sm text-text-muted hidden md:block">{descriptions[type]}</div>
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    <div className="text-sm text-text-secondary">{getReportTypeLabel(type)}</div>
-
-                    {/* Selection Indicator */}
-                    {isSelected && (
-                      <div className="absolute -top-3 -right-3 w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center shadow-lg">
-                        <span className="text-white text-lg">✓</span>
-                      </div>
-                    )}
-
-                    {/* Hover Effect */}
-                    <div className={`absolute inset-0 rounded-2xl transition-opacity duration-300 ${
-                      isSelected ? 'opacity-0' : 'opacity-0 group-hover:opacity-5'
-                    } bg-primary-500`} />
-                  </label>
+                    <span className="capitalize">{type}</span>
+                  </button>
                 )
               })}
             </div>
           </div>
 
           {/* Date Selection Options */}
-          <div className="space-y-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                <span className="text-primary-600 text-lg">📅</span>
-              </div>
-              <label className="text-xl font-semibold text-text-primary">Date Selection</label>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {getQuickSelectOptions(state.selectedReportType).map((option) => {
-                const isSelected = (option.value === 'custom' && !state.selectedQuickOption) || state.selectedQuickOption === option.value
-                const dateIcons = {
-                  today: '🎯',
-                  yesterday: '⏪',
-                  this_week: '📊',
-                  last_week: '📉',
-                  this_month: '📈',
-                  last_month: '📋',
-                  last_7_days: '🗓️',
-                  last_30_days: '📆',
-                  custom: '🔧'
-                }
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Date Range</label>
+            <select
+              value={state.selectedQuickOption || 'custom'}
+              onChange={(e) => handleQuickSelectChange(e.target.value as QuickSelectOption | 'custom')}
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+            >
+              {getQuickSelectOptions(state.selectedReportType).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
+          {/* Enhanced Custom Date & Time Range Picker */}
+          {!state.selectedQuickOption && (
+            <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+              {/* Date Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Date</label>
+                  <input
+                    type="date"
+                    value={format(customDateRange.startDate, 'yyyy-MM-dd')}
+                    onChange={(e) => setCustomDateRange(prev => ({
+                      ...prev,
+                      startDate: new Date(e.target.value)
+                    }))}
+                    disabled={isDatePickerDisabled(state.selectedReportType, state.selectedQuickOption)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">End Date</label>
+                  <input
+                    type="date"
+                    value={format(customDateRange.endDate, 'yyyy-MM-dd')}
+                    onChange={(e) => setCustomDateRange(prev => ({
+                      ...prev,
+                      endDate: new Date(e.target.value)
+                    }))}
+                    disabled={isDatePickerDisabled(state.selectedReportType, state.selectedQuickOption)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Time Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Time</label>
+                  <input
+                    type="time"
+                    value={customTimeRange.startTime}
+                    onChange={(e) => setCustomTimeRange(prev => ({
+                      ...prev,
+                      startTime: e.target.value
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">End Time</label>
+                  <input
+                    type="time"
+                    value={customTimeRange.endTime}
+                    onChange={(e) => setCustomTimeRange(prev => ({
+                      ...prev,
+                      endTime: e.target.value
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Time Presets */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Quick Presets</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: 'Full Day', start: '00:00', end: '23:59' },
+                    { label: 'Business Hours', start: '09:00', end: '17:00' },
+                    { label: 'Morning', start: '06:00', end: '12:00' },
+                    { label: 'Afternoon', start: '12:00', end: '18:00' },
+                    { label: 'Evening', start: '18:00', end: '23:59' }
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setCustomTimeRange({ startTime: preset.start, endTime: preset.end })}
+                      className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Date & Time Range Preview */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Selected Range</div>
+            <div className="space-y-1">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {format(previewDateRange.startDate, 'MMM d, yyyy')} {!state.selectedQuickOption && `at ${customTimeRange.startTime}`}
+                {' → '}
+                {format(previewDateRange.endDate, 'MMM d, yyyy')} {!state.selectedQuickOption && `at ${customTimeRange.endTime}`}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {Math.ceil((previewDateRange.endDate.getTime() - previewDateRange.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} day(s)
+              </div>
+            </div>
+          </div>
+
+          {/* Data Inclusion Criteria */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Include in Report</label>
+            <div className="space-y-2">
+              {[
+                { key: 'includeActiveSessions', label: 'Active Sessions' },
+                { key: 'includeCompletedSessions', label: 'Completed Sessions' },
+                { key: 'includeExpenses', label: 'Expenses' },
+                { key: 'includePendingPayments', label: 'Pending Payments' }
+              ].map((item) => {
+                const isChecked = dataInclusionCriteria[item.key as keyof typeof dataInclusionCriteria]
                 return (
                   <label
-                    key={option.value}
-                    className={`group relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                      isSelected
-                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-lg'
-                        : 'border-border-light hover:border-primary-300 hover:bg-surface-muted hover:shadow-md'
-                    }`}
+                    key={item.key}
+                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
                   >
                     <input
-                      type="radio"
-                      name="quickSelect"
-                      value={option.value}
-                      checked={isSelected}
-                      onChange={(e) => handleQuickSelectChange(e.target.value as QuickSelectOption | 'custom')}
-                      className="sr-only"
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => setDataInclusionCriteria(prev => ({
+                        ...prev,
+                        [item.key]: e.target.checked
+                      }))}
+                      className="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 dark:bg-gray-700"
                     />
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg mr-3 transition-all duration-200 ${
-                      isSelected
-                        ? 'bg-primary-500 text-white'
-                        : 'bg-surface-muted group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30'
-                    }`}>
-                      {dateIcons[option.value as keyof typeof dateIcons] || '📅'}
-                    </div>
-                    <span className={`font-medium transition-colors ${
-                      isSelected ? 'text-primary-600' : 'text-text-primary'
-                    }`}>
-                      {option.label}
-                    </span>
-                    {isSelected && (
-                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-sm">✓</span>
-                      </div>
-                    )}
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{item.label}</span>
                   </label>
                 )
               })}
             </div>
           </div>
 
-          {/* Enhanced Custom Date & Time Range Picker */}
-          {!state.selectedQuickOption && (
-            <div className="space-y-6">
-              {/* Section Header */}
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                  <span className="text-primary-600 text-lg">🔧</span>
-                </div>
-                <label className="text-xl font-semibold text-text-primary">Custom Date & Time Range</label>
-              </div>
-
-              {/* Date Range Card */}
-              <Card className="bg-gradient-to-br from-surface-light to-surface-muted border-2 border-primary-200 dark:border-primary-700">
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    {/* Date Selection */}
-                    <div>
-                      <h4 className="text-lg font-semibold text-text-primary mb-4 flex items-center space-x-2">
-                        <span className="text-primary-500">📅</span>
-                        <span>Date Range</span>
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-text-primary">Start Date</label>
-                          <div className="relative">
-                            <input
-                              type="date"
-                              value={format(customDateRange.startDate, 'yyyy-MM-dd')}
-                              onChange={(e) => setCustomDateRange(prev => ({
-                                ...prev,
-                                startDate: new Date(e.target.value)
-                              }))}
-                              disabled={isDatePickerDisabled(state.selectedReportType, state.selectedQuickOption)}
-                              className="w-full px-4 py-3 border-2 border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-white dark:bg-surface-dark text-text-primary shadow-sm hover:shadow-md"
-                            />
-                            <div className="absolute right-3 top-3 text-primary-400 pointer-events-none">
-                              <span className="text-lg">📅</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-text-primary">End Date</label>
-                          <div className="relative">
-                            <input
-                              type="date"
-                              value={format(customDateRange.endDate, 'yyyy-MM-dd')}
-                              onChange={(e) => setCustomDateRange(prev => ({
-                                ...prev,
-                                endDate: new Date(e.target.value)
-                              }))}
-                              disabled={isDatePickerDisabled(state.selectedReportType, state.selectedQuickOption)}
-                              className="w-full px-4 py-3 border-2 border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-white dark:bg-surface-dark text-text-primary shadow-sm hover:shadow-md"
-                            />
-                            <div className="absolute right-3 top-3 text-primary-400 pointer-events-none">
-                              <span className="text-lg">📅</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Time Selection */}
-                    <div>
-                      <h4 className="text-lg font-semibold text-text-primary mb-4 flex items-center space-x-2">
-                        <span className="text-primary-500">🕒</span>
-                        <span>Time Range</span>
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-text-primary">Start Time</label>
-                          <div className="relative">
-                            <input
-                              type="time"
-                              value={customTimeRange.startTime}
-                              onChange={(e) => setCustomTimeRange(prev => ({
-                                ...prev,
-                                startTime: e.target.value
-                              }))}
-                              className="w-full px-4 py-3 border-2 border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-white dark:bg-surface-dark text-text-primary shadow-sm hover:shadow-md"
-                            />
-                            <div className="absolute right-3 top-3 text-primary-400 pointer-events-none">
-                              <span className="text-lg">🕒</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-text-primary">End Time</label>
-                          <div className="relative">
-                            <input
-                              type="time"
-                              value={customTimeRange.endTime}
-                              onChange={(e) => setCustomTimeRange(prev => ({
-                                ...prev,
-                                endTime: e.target.value
-                              }))}
-                              className="w-full px-4 py-3 border-2 border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-white dark:bg-surface-dark text-text-primary shadow-sm hover:shadow-md"
-                            />
-                            <div className="absolute right-3 top-3 text-primary-400 pointer-events-none">
-                              <span className="text-lg">🕒</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Time Presets */}
-                    <div>
-                      <h5 className="text-sm md:text-md font-medium text-text-primary mb-3">Quick Time Presets</h5>
-                      <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2">
-                        {[
-                          { label: 'Full Day', start: '00:00', end: '23:59' },
-                          { label: 'Business Hours', start: '09:00', end: '17:00' },
-                          { label: 'Morning', start: '06:00', end: '12:00' },
-                          { label: 'Afternoon', start: '12:00', end: '18:00' },
-                          { label: 'Evening', start: '18:00', end: '23:59' }
-                        ].map((preset) => (
-                          <button
-                            key={preset.label}
-                            onClick={() => setCustomTimeRange({ startTime: preset.start, endTime: preset.end })}
-                            className="px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-lg hover:bg-primary-200 dark:hover:bg-primary-800/40 transition-colors duration-200 font-medium text-center"
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Enhanced Date & Time Range Preview */}
-          <Card className="bg-gradient-to-br from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border-2 border-primary-200 dark:border-primary-700 shadow-lg">
-            <CardContent className="p-3 md:p-6">
-              <div className="flex items-start space-x-3 md:space-x-4">
-                <div className="w-8 h-8 md:w-12 md:h-12 bg-primary-500 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                  <span className="text-white text-lg md:text-2xl">📊</span>
-                </div>
-                <div className="flex-1 space-y-2 md:space-y-3">
-                  <h4 className="text-base md:text-lg font-bold text-primary-700 dark:text-primary-300 flex items-center space-x-2">
-                    <span className="text-sm md:text-base">📅</span>
-                    <span>Selected Date & Time Range</span>
-                  </h4>
-
-                  {/* Date Range Display */}
-                  <div className="bg-white dark:bg-surface-dark p-3 md:p-4 rounded-xl border border-primary-200 dark:border-primary-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">From:</span>
-                      <span className="text-text-primary font-medium">
-                        {format(previewDateRange.startDate, 'EEEE, MMMM d, yyyy')}
-                        <span className="text-primary-500 ml-2">
-                          {!state.selectedQuickOption ? `at ${customTimeRange.startTime}` : 'at 00:00'}
-                        </span>
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">To:</span>
-                      <span className="text-text-primary font-medium">
-                        {format(previewDateRange.endDate, 'EEEE, MMMM d, yyyy')}
-                        <span className="text-primary-500 ml-2">
-                          {!state.selectedQuickOption ? `at ${customTimeRange.endTime}` : 'at 23:59'}
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Summary Stats */}
-                  <div className="flex items-center space-x-6 text-sm">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-primary-500 rounded-full"></div>
-                      <span className="text-text-primary font-medium">
-                        {Math.ceil((previewDateRange.endDate.getTime() - previewDateRange.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} day(s)
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <span className="text-text-muted">
-                        {!state.selectedQuickOption ?
-                          `Custom time: ${customTimeRange.startTime} - ${customTimeRange.endTime}` :
-                          'Full day (00:00 - 23:59)'
-                        }
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Enhanced Data Inclusion Criteria */}
-          <div className="space-y-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                <span className="text-primary-600 text-lg">🎯</span>
-              </div>
-              <label className="text-xl font-semibold text-text-primary">Data Inclusion Criteria</label>
-            </div>
-
-            <Card className="bg-gradient-to-br from-surface-light to-surface-muted border-2 border-primary-200 dark:border-primary-700">
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {[
-                    { key: 'includeActiveSessions', label: 'Active Sessions', icon: '🟢', description: 'Include currently active parking sessions' },
-                    { key: 'includeCompletedSessions', label: 'Completed Sessions', icon: '✅', description: 'Include finished parking sessions' },
-                    { key: 'includeExpenses', label: 'Expenses', icon: '💰', description: 'Include operational expenses' },
-                    { key: 'includePendingPayments', label: 'Pending Payments', icon: '⏳', description: 'Include payments awaiting processing' }
-                  ].map((item) => {
-                    const isChecked = dataInclusionCriteria[item.key as keyof typeof dataInclusionCriteria]
-                    return (
-                      <label
-                        key={item.key}
-                        className={`group relative flex items-start p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                          isChecked
-                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-lg'
-                            : 'border-border-light hover:border-primary-300 hover:bg-surface-muted hover:shadow-md'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-4 w-full">
-                          {/* Custom Checkbox */}
-                          <div className={`relative w-6 h-6 rounded-lg border-2 transition-all duration-200 ${
-                            isChecked
-                              ? 'border-primary-500 bg-primary-500'
-                              : 'border-border-light group-hover:border-primary-300'
-                          }`}>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => setDataInclusionCriteria(prev => ({
-                                ...prev,
-                                [item.key]: e.target.checked
-                              }))}
-                              className="sr-only"
-                            />
-                            {isChecked && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-white text-sm font-bold">✓</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Icon and Content */}
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg transition-all duration-200 ${
-                            isChecked
-                              ? 'bg-primary-500 text-white shadow-lg'
-                              : 'bg-surface-muted group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30'
-                          }`}>
-                            {item.icon}
-                          </div>
-
-                          <div className="flex-1">
-                            <div className={`font-semibold transition-colors ${
-                              isChecked ? 'text-primary-600' : 'text-text-primary'
-                            }`}>
-                              {item.label}
-                            </div>
-                            <div className="text-sm text-text-muted mt-1">{item.description}</div>
-                          </div>
-                        </div>
-
-                        {/* Selection Indicator */}
-                        {isChecked && (
-                          <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center shadow-lg">
-                            <span className="text-white text-xs">✓</span>
-                          </div>
-                        )}
-                      </label>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Enhanced Auto-refresh for Today's Report */}
+          {/* Auto-refresh for Today's Report */}
           {state.selectedQuickOption === 'today' && (
-            <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700">
-              <CardContent className="p-6">
-                <label className="group flex items-center space-x-4 cursor-pointer">
-                  {/* Custom Toggle Switch */}
-                  <div className={`relative w-12 h-6 rounded-full transition-all duration-300 ${
-                    autoRefresh ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={autoRefresh}
-                      onChange={(e) => setAutoRefresh(e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
-                      autoRefresh ? 'transform translate-x-6' : ''
-                    }`}></div>
-                  </div>
-
-                  {/* Icon and Text */}
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg transition-all duration-200 ${
-                      autoRefresh
-                        ? 'bg-green-500 text-white shadow-lg'
-                        : 'bg-surface-muted group-hover:bg-green-100 dark:group-hover:bg-green-900/30'
-                    }`}>
-                      🔄
-                    </div>
-                    <div>
-                      <div className={`font-semibold transition-colors ${
-                        autoRefresh ? 'text-green-600 dark:text-green-400' : 'text-text-primary'
-                      }`}>
-                        Auto-refresh Report
-                      </div>
-                      <div className="text-sm text-text-muted">Automatically updates every hour for today's data</div>
-                    </div>
-                  </div>
-
-                  {/* Status Indicator */}
-                  {autoRefresh && (
-                    <div className="ml-auto flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      <span className="text-sm text-green-600 dark:text-green-400 font-medium">Active</span>
-                    </div>
-                  )}
-                </label>
-              </CardContent>
-            </Card>
+            <div className="flex items-center space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="w-4 h-4 text-green-600 border-gray-300 dark:border-gray-600 rounded focus:ring-green-500 dark:bg-gray-700"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Auto-refresh</span>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Updates every hour for today's data</p>
+              </div>
+              {autoRefresh && (
+                <div className="flex items-center space-x-1.5">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">Active</span>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Error Display */}
@@ -868,33 +593,20 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             </div>
           )}
 
-          {/* Enhanced Generate Button */}
-          <div className="flex justify-center pt-4">
+          {/* Generate Button */}
+          <div className="flex justify-end pt-2">
             <Button
               onClick={generateReport}
               disabled={state.isGenerating}
-              className={`px-6 py-3 md:px-8 md:py-4 text-base md:text-lg font-semibold rounded-xl shadow-lg transition-all duration-300 transform ${
-                state.isGenerating
-                  ? 'scale-95 opacity-75'
-                  : 'hover:scale-105 hover:shadow-xl'
-              } bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white border-0`}
+              className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {state.isGenerating ? (
-                <div className="flex items-center space-x-3">
-                  <LoadingSpinner className="w-5 h-5" />
-                  <span>Generating Report...</span>
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                  </div>
+                <div className="flex items-center space-x-2">
+                  <LoadingSpinner className="w-4 h-4" />
+                  <span>Generating...</span>
                 </div>
               ) : (
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">📊</span>
-                  <span>Generate Report</span>
-                  <span className="text-xl">✨</span>
-                </div>
+                'Generate Report'
               )}
             </Button>
           </div>
@@ -903,58 +615,41 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
 
       {/* Report Display */}
       {state.currentReport && (
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
+        <Card className="border border-gray-200 dark:border-gray-700">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h3 className="text-xl font-semibold text-text-primary">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {getReportTypeLabel(state.currentReport.reportType, state.currentReport.dateRange)}
                 </h3>
-                <p className="text-text-secondary">
-                  {format(state.currentReport.dateRange.startDate, 'MMMM d, yyyy')} - {format(state.currentReport.dateRange.endDate, 'MMMM d, yyyy')}
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {format(state.currentReport.dateRange.startDate, 'MMM d, yyyy')} - {format(state.currentReport.dateRange.endDate, 'MMM d, yyyy')}
                 </p>
                 {state.lastGenerated && (
-                  <p className="text-sm text-text-muted">
-                    Generated: {format(state.lastGenerated, 'MMMM d, yyyy \'at\' h:mm a')}
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    Generated: {format(state.lastGenerated, 'MMM d, yyyy \'at\' h:mm a')}
                   </p>
                 )}
               </div>
 
-              {/* Enhanced Export Buttons */}
-              <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
+              {/* Export Buttons */}
+              <div className="flex items-center gap-2">
                 {[
-                  { format: 'csv', label: 'CSV', icon: '📈', color: 'green', description: 'Spreadsheet format' },
-                  { format: 'excel', label: 'Excel', icon: '📉', color: 'blue', description: 'Microsoft Excel' },
-                  { format: 'pdf', label: 'PDF', icon: '📄', color: 'red', description: 'Portable document' }
+                  { format: 'csv', label: 'CSV' },
+                  { format: 'excel', label: 'Excel' },
+                  { format: 'pdf', label: 'PDF' }
                 ].map((exportOption) => (
                   <Button
                     key={exportOption.format}
                     onClick={() => exportReport(exportOption.format as 'csv' | 'excel' | 'pdf')}
                     disabled={state.isExporting}
                     variant="outline"
-                    className={`group relative flex items-center space-x-2 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-medium rounded-xl border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
-                      exportOption.color === 'green' ? 'border-green-300 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20' :
-                      exportOption.color === 'blue' ? 'border-blue-300 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20' :
-                      'border-red-300 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
-                    } ${
-                      state.isExporting ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
+                    className="px-3 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
                   >
-                    <span className="text-base sm:text-lg">{exportOption.icon}</span>
-                    <div className="flex flex-col items-start">
-                      <span className={`transition-colors ${
-                        exportOption.color === 'green' ? 'group-hover:text-green-600' :
-                        exportOption.color === 'blue' ? 'group-hover:text-blue-600' :
-                        'group-hover:text-red-600'
-                      }`}>
-                        Export {exportOption.label}
-                      </span>
-                      <span className="text-xs text-text-muted hidden sm:block">{exportOption.description}</span>
-                    </div>
-                    {state.isExporting && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-surface-dark bg-opacity-90 rounded-xl">
-                        <LoadingSpinner className="w-4 h-4" />
-                      </div>
+                    {state.isExporting ? (
+                      <LoadingSpinner className="w-3 h-3" />
+                    ) : (
+                      exportOption.label
                     )}
                   </Button>
                 ))}
@@ -1005,39 +700,25 @@ const DetailedReportDisplay: React.FC<{ data: { entries: ParkingEntry[]; summary
   return (
     <div className="space-y-6">
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: 'Total Sessions', value: data.summary.totalSessions, icon: '📊', color: 'blue', bgGradient: 'from-blue-500 to-blue-600' },
-          { title: 'Revenue', value: `₹${data.summary.revenue.toFixed(2)}`, icon: '💰', color: 'green', bgGradient: 'from-green-500 to-green-600' },
-          { title: 'Active Sessions', value: data.summary.activeSessions, icon: '🟢', color: 'yellow', bgGradient: 'from-yellow-500 to-yellow-600' },
-          { title: 'Net Income', value: `₹${data.summary.netIncome.toFixed(2)}`, icon: '📈', color: 'purple', bgGradient: 'from-purple-500 to-purple-600' }
+          { title: 'Total Sessions', value: data.summary.totalSessions, color: 'text-blue-600 dark:text-blue-400' },
+          { title: 'Revenue', value: `₹${data.summary.revenue.toFixed(2)}`, color: 'text-green-600 dark:text-green-400' },
+          { title: 'Active Sessions', value: data.summary.activeSessions, color: 'text-yellow-600 dark:text-yellow-400' },
+          { title: 'Net Income', value: `₹${data.summary.netIncome.toFixed(2)}`, color: 'text-purple-600 dark:text-purple-400' }
         ].map((card, index) => (
-          <div key={index} className="group relative bg-white dark:bg-surface-dark p-3 md:p-6 rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-border-light hover:border-primary-300 hover:scale-105">
-            <div className={`absolute top-0 right-0 w-12 h-12 md:w-20 md:h-20 bg-gradient-to-br ${card.bgGradient} opacity-10 rounded-xl md:rounded-2xl`}></div>
-            <div className={`w-8 h-8 md:w-12 md:h-12 bg-gradient-to-br ${card.bgGradient} rounded-lg md:rounded-xl flex items-center justify-center text-white text-lg md:text-2xl shadow-lg mb-2 md:mb-4 group-hover:scale-110 transition-transform duration-300`}>
-              {card.icon}
-            </div>
-            <div className="relative z-10">
-              <h4 className="text-xs md:text-sm font-semibold text-text-secondary mb-1 md:mb-2 uppercase tracking-wide">{card.title}</h4>
-              <p className="text-lg md:text-3xl font-bold text-text-primary group-hover:text-primary-600 transition-colors duration-300">{card.value}</p>
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 to-primary-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl md:rounded-2xl"></div>
+          <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{card.title}</div>
+            <div className={`text-2xl font-bold ${card.color}`}>{card.value}</div>
           </div>
         ))}
       </div>
 
       {/* Parking Entries Table */}
-      <Card className="overflow-hidden shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 border-b">
-          <div className="flex items-center space-x-3 md:space-x-4">
-            <div className="w-8 h-8 md:w-12 md:h-12 bg-primary-500 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white text-lg md:text-2xl">📋</span>
-            </div>
-            <div>
-              <h3 className="text-lg md:text-xl font-bold text-text-primary">Parking Entries</h3>
-              <p className="text-text-secondary text-sm md:text-base hidden sm:block">Individual parking session details</p>
-            </div>
-          </div>
+      <Card className="border border-gray-200 dark:border-gray-700">
+        <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Parking Sessions</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Detailed parking session records</p>
         </CardHeader>
         <CardContent className="p-0">
           {/* Mobile view - Cards */}

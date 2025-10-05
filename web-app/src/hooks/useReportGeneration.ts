@@ -1,6 +1,7 @@
 // React Hook for Report Generation with Performance Optimization
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { format } from 'date-fns'
 import { reportService } from '../services/reportGenerationService'
 import { reportExportService } from '../services/reportExportService'
 import type {
@@ -105,10 +106,14 @@ export const useReportGeneration = (
    * === CACHE MANAGEMENT ===
    */
   const generateCacheKey = useCallback((request: ReportGenerationRequest): string => {
-    const dateKey = request.dateSelection.customRange
-      ? `${request.dateSelection.customRange.startDate.getTime()}_${request.dateSelection.customRange.endDate.getTime()}`
-      : request.dateSelection.quickSelect || 'auto'
+    // ✅ FIX: Align with service cache key format (use formatted dates, not timestamps)
+    const dateRange = reportService.calculateDateBoundaries(
+      request.type,
+      request.dateSelection.quickSelect,
+      request.dateSelection.customRange
+    )
 
+    const dateKey = `${format(dateRange.startDate, 'yyyy-MM-dd')}_${format(dateRange.endDate, 'yyyy-MM-dd')}`
     const criteriaKey = Object.values(request.dataInclusionCriteria).join('_')
     return `${request.type}_${dateKey}_${criteriaKey}`
   }, [])

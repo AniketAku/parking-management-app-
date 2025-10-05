@@ -9,16 +9,15 @@ import type { ShiftLinkingState, ShiftLinkingMetrics } from '../../hooks/useShif
 
 interface ShiftSession {
   id: string
-  user_id: string           // Updated: matches database column
-  operator_name?: string    // NEW: Human-readable operator name
-  employee_phone?: string
-  start_time: string        // Updated: matches database column
-  end_time?: string         // Updated: matches database column
+  employee_id: string              // Database column name
+  employee_name: string             // Database column name
+  employee_phone?: string           // Database column name
+  shift_start_time: string          // Database column name
+  shift_end_time?: string           // Database column name
   status: string
-  opening_cash?: number     // Optional: database column may not exist
-  closing_cash?: number     // Updated: matches database column
-  cash_collected?: number   // NEW: Ending cash amount
-  notes?: string            // Updated: matches database column
+  opening_cash_amount?: number      // Database column name
+  closing_cash_amount?: number      // Database column name
+  shift_notes?: string              // Database column name
 }
 
 interface ShiftOverviewTabProps {
@@ -72,31 +71,89 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
       const today = new Date()
       today.setHours(0, 0, 0, 0)
 
-      const { data: parkingSessions, error } = await supabase
-        .from('parking_sessions')
+      // Try shift_statistics view first (if migration deployed)
+      if (linkingState.activeShiftId) {
+        const { data: shiftStats, error: statsError } = await supabase
+          .from('shift_statistics')
+          .select('*')
+          .eq('shift_id', linkingState.activeShiftId)
+          .single()
+
+        if (!statsError && shiftStats) {
+          // Use real data from shift_statistics view
+          setTodayStats({
+            totalRevenue: shiftStats.revenue_collected || 0,
+            vehiclesProcessed: shiftStats.vehicles_entered || 0,
+            currentlyParked: shiftStats.vehicles_currently_parked || 0,
+            averageSessionTime: Math.round(shiftStats.shift_duration_minutes / Math.max(shiftStats.vehicles_entered, 1) || 0)
+          })
+          return
+        }
+      }
+
+      // Fallback: Query parking_entries directly (works without migration)
+      // ✅ FIX: Include multi-day sessions - entries where EITHER entry_time OR exit_time is today
+      const todayStart = new Date(today)
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date(today)
+      todayEnd.setHours(23, 59, 59, 999)
+
+      const { data: parkingEntries, error } = await supabase
+        .from('parking_entries')
         .select('*')
-        .gte('entry_time', today.toISOString())
+        .or(`and(entry_time.gte.${todayStart.toISOString()},entry_time.lte.${todayEnd.toISOString()}),and(exit_time.gte.${todayStart.toISOString()},exit_time.lte.${todayEnd.toISOString()})`)
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching parking entries:', error)
+        return
+      }
 
-      const totalRevenue = parkingSessions?.reduce((sum, session) => {
-        return sum + (session.parking_fee || 0)
+      console.log('📊 SHIFT OVERVIEW - Fetched entries:', {
+        totalCount: parkingEntries?.length || 0,
+        firstEntry: parkingEntries?.[0] ? {
+          id: parkingEntries[0].id,
+          entry_time: parkingEntries[0].entry_time,
+          exit_time: parkingEntries[0].exit_time,
+          status: parkingEntries[0].status,
+          actual_fee: parkingEntries[0].actual_fee,
+          calculated_fee: parkingEntries[0].calculated_fee
+        } : null
+      })
+
+      // ✅ FIX: Use actual database column names (actual_fee/calculated_fee) not parking_fee
+      const totalRevenue = parkingEntries?.reduce((sum, entry) => {
+        // Only count exited/completed sessions for revenue
+        if (entry.status === 'Exited' || entry.exit_time) {
+          const feeAmount = entry.actual_fee || entry.calculated_fee || 0
+          console.log('📊 SHIFT OVERVIEW - Revenue entry:', {
+            id: entry.id,
+            status: entry.status,
+            actual_fee: entry.actual_fee,
+            calculated_fee: entry.calculated_fee,
+            feeAmount,
+            previousSum: sum
+          })
+          return sum + feeAmount
+        }
+        return sum
       }, 0) || 0
 
-      const vehiclesProcessed = parkingSessions?.length || 0
+      console.log('📊 SHIFT OVERVIEW - Final revenue:', totalRevenue)
 
-      const currentlyParked = parkingSessions?.filter(session =>
-        session.status === 'Active'
+      const vehiclesProcessed = parkingEntries?.length || 0
+
+      const currentlyParked = parkingEntries?.filter(entry =>
+        entry.status === 'Active'
       ).length || 0
 
-      const completedSessions = parkingSessions?.filter(session =>
-        session.exit_time
+      const completedSessions = parkingEntries?.filter(entry =>
+        entry.exit_time
       ) || []
 
       const averageSessionTime = completedSessions.length > 0
-        ? completedSessions.reduce((sum, session) => {
-            const entryTime = new Date(session.entry_time).getTime()
-            const exitTime = new Date(session.exit_time!).getTime()
+        ? completedSessions.reduce((sum, entry) => {
+            const entryTime = new Date(entry.entry_time).getTime()
+            const exitTime = new Date(entry.exit_time!).getTime()
             return sum + (exitTime - entryTime)
           }, 0) / (completedSessions.length * 1000 * 60) // Convert to minutes
         : 0
@@ -110,7 +167,7 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
     } catch (error) {
       console.error('Error fetching today statistics:', error)
     }
-  }, [])
+  }, [linkingState.activeShiftId])
 
   // Calculate shift duration
   const calculateDuration = useCallback((startTime: string): string => {
@@ -130,7 +187,7 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
     if (!activeShift) return
 
     const updateDuration = () => {
-      setShiftDuration(calculateDuration(activeShift.start_time))
+      setShiftDuration(calculateDuration(activeShift.shift_start_time))
     }
 
     updateDuration()
@@ -187,7 +244,7 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-500">Employee</label>
               <div className="text-lg font-semibold text-gray-900">
-                {activeShift.operator_name || activeShift.user_id}
+                {activeShift.employee_name}
               </div>
               {activeShift.employee_phone && (
                 <div className="text-sm text-gray-600">{activeShift.employee_phone}</div>
@@ -197,10 +254,10 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-500">Started At</label>
               <div className="text-lg font-semibold text-gray-900">
-                {formatTime(activeShift.start_time)}
+                {formatTime(activeShift.shift_start_time)}
               </div>
               <div className="text-sm text-gray-600">
-                {new Date(activeShift.start_time).toLocaleDateString()}
+                {new Date(activeShift.shift_start_time).toLocaleDateString()}
               </div>
             </div>
 
@@ -214,7 +271,7 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-500">Opening Cash</label>
               <div className="text-lg font-semibold text-green-600">
-                {formatCurrency(activeShift.opening_cash ?? 0)}
+                {formatCurrency(activeShift.opening_cash_amount ?? 0)}
               </div>
             </div>
           </div>

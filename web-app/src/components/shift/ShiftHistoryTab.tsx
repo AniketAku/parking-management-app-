@@ -15,21 +15,21 @@ interface ShiftHistoryTabProps {
 
 interface ShiftSession {
   id: string
-  user_id: string
-  start_time: string
-  end_time: string | null
-  starting_cash: number
-  ending_cash: number | null
+  employee_id: string
+  employee_name: string
+  shift_start_time: string
+  shift_end_time: string | null
+  opening_cash_amount: number
+  closing_cash_amount: number | null
   status: 'active' | 'completed' | 'handover' | 'emergency_ended'
-  notes: string | null
-  end_notes: string | null
+  shift_notes: string | null
   revenue?: number
   sessions_count?: number
   duration_hours?: number
 }
 
 type HistoryPeriod = 'today' | 'week' | 'month' | 'all'
-type SortField = 'start_time' | 'duration' | 'revenue' | 'user_id'
+type SortField = 'shift_start_time' | 'duration' | 'revenue' | 'employee_name'
 type SortOrder = 'asc' | 'desc'
 
 interface HistoryFilters {
@@ -55,7 +55,7 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
     period: 'week',
     operatorFilter: '',
     statusFilter: '',
-    sortField: 'start_time',
+    sortField: 'shift_start_time',
     sortOrder: 'desc',
     searchTerm: ''
   })
@@ -98,29 +98,28 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
         .from('shift_sessions')
         .select(`
           id,
-          user_id,
-          start_time,
-          end_time,
-          starting_cash,
-          ending_cash,
+          employee_id,
+          employee_name,
+          shift_start_time,
+          shift_end_time,
+          opening_cash_amount,
+          closing_cash_amount,
           status,
-          notes,
-          end_notes
+          shift_notes
         `)
 
       // Apply date filters
       if (dateFilter.start) {
-        query = query.gte('start_time', dateFilter.start.toISOString())
+        query = query.gte('shift_start_time', dateFilter.start.toISOString())
       }
       if (dateFilter.end) {
-        query = query.lte('start_time', dateFilter.end.toISOString())
+        query = query.lte('shift_start_time', dateFilter.end.toISOString())
       }
 
-      // Apply operator filter (temporarily disabled - user_id vs operator_name mismatch)
-      // TODO: Implement user lookup or join with users table
-      // if (filters.operatorFilter) {
-      //   query = query.eq('user_id', filters.operatorFilter)
-      // }
+      // Apply operator filter
+      if (filters.operatorFilter) {
+        query = query.eq('employee_name', filters.operatorFilter)
+      }
 
       // Apply status filter
       if (filters.statusFilter) {
@@ -138,9 +137,9 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
       const processedShifts = await Promise.all((shifts || []).map(async (shift) => {
         // Calculate duration
         let duration_hours = 0
-        if (shift.end_time) {
-          const startTime = new Date(shift.start_time)
-          const endTime = new Date(shift.end_time)
+        if (shift.shift_end_time) {
+          const startTime = new Date(shift.shift_start_time)
+          const endTime = new Date(shift.shift_end_time)
           duration_hours = differenceInHours(endTime, startTime) +
                           differenceInMinutes(endTime, startTime) % 60 / 60
         }
@@ -176,7 +175,7 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
 
       // Extract available operators for filter (temporarily showing user IDs)
       // TODO: Join with users table to get actual operator names
-      const operators = [...new Set(processedShifts.map(shift => shift.user_id))]
+      const operators = [...new Set(processedShifts.map(shift => shift.employee_name))]
       setAvailableOperators(operators)
 
     } catch (error) {
@@ -198,10 +197,9 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
 
     const searchLower = filters.searchTerm.toLowerCase()
     return shiftHistory.filter(shift =>
-      shift.user_id.toLowerCase().includes(searchLower) ||
+      shift.employee_name.toLowerCase().includes(searchLower) ||
       shift.id.toLowerCase().includes(searchLower) ||
-      (shift.notes && shift.notes.toLowerCase().includes(searchLower)) ||
-      (shift.end_notes && shift.end_notes.toLowerCase().includes(searchLower))
+      (shift.shift_notes && shift.shift_notes.toLowerCase().includes(searchLower))
     )
   }, [shiftHistory, filters.searchTerm])
 
@@ -309,10 +307,10 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
                 onChange={(e) => setFilters(prev => ({ ...prev, sortField: e.target.value as SortField }))}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="start_time">Start Time</option>
+                <option value="shift_start_time">Start Time</option>
                 <option value="duration">Duration</option>
                 <option value="revenue">Revenue</option>
-                <option value="user_id">User ID</option>
+                <option value="employee_name">Employee Name</option>
               </select>
             </div>
 
@@ -376,10 +374,10 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div>
-                        <div className="font-semibold text-gray-900">{shift.user_id}</div>
+                        <div className="font-semibold text-gray-900">{shift.employee_name}</div>
                         <div className="text-sm text-gray-600">
-                          {format(new Date(shift.start_time), 'MMM dd, yyyy HH:mm')}
-                          {shift.end_time && ` - ${format(new Date(shift.end_time), 'HH:mm')}`}
+                          {format(new Date(shift.shift_start_time), 'MMM dd, yyyy HH:mm')}
+                          {shift.shift_end_time && ` - ${format(new Date(shift.shift_end_time), 'HH:mm')}`}
                         </div>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs border ${getStatusColor(shift.status)}`}>
@@ -433,7 +431,7 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-600">Operator</label>
-                    <div className="text-lg font-semibold">{selectedShift.user_id}</div>
+                    <div className="text-lg font-semibold">{selectedShift.employee_name}</div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Status</label>
@@ -450,16 +448,16 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
                   <div>
                     <label className="text-sm font-medium text-gray-600">Started At</label>
                     <div className="text-lg">
-                      {format(new Date(selectedShift.start_time), 'MMM dd, yyyy HH:mm:ss')}
+                      {format(new Date(selectedShift.shift_start_time), 'MMM dd, yyyy HH:mm:ss')}
                     </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">
-                      {selectedShift.end_time ? 'Ended At' : 'Status'}
+                      {selectedShift.shift_end_time ? 'Ended At' : 'Status'}
                     </label>
                     <div className="text-lg">
-                      {selectedShift.end_time
-                        ? format(new Date(selectedShift.end_time), 'MMM dd, yyyy HH:mm:ss')
+                      {selectedShift.shift_end_time
+                        ? format(new Date(selectedShift.shift_end_time), 'MMM dd, yyyy HH:mm:ss')
                         : 'Still Active'
                       }
                     </div>
@@ -494,13 +492,13 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-600">Starting Cash</label>
-                    <div className="text-lg">₹{selectedShift.starting_cash.toLocaleString()}</div>
+                    <div className="text-lg">₹{selectedShift.opening_cash_amount.toLocaleString()}</div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Ending Cash</label>
                     <div className="text-lg">
-                      {selectedShift.ending_cash !== null
-                        ? `₹${selectedShift.ending_cash.toLocaleString()}`
+                      {selectedShift.closing_cash_amount !== null
+                        ? `₹${selectedShift.closing_cash_amount.toLocaleString()}`
                         : 'N/A'
                       }
                     </div>
@@ -508,20 +506,10 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
                 </div>
 
                 {/* Notes */}
-                {(selectedShift.notes || selectedShift.end_notes) && (
-                  <div className="space-y-3">
-                    {selectedShift.notes && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Start Notes</label>
-                        <div className="bg-gray-50 p-3 rounded text-sm">{selectedShift.notes}</div>
-                      </div>
-                    )}
-                    {selectedShift.end_notes && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">End Notes</label>
-                        <div className="bg-gray-50 p-3 rounded text-sm">{selectedShift.end_notes}</div>
-                      </div>
-                    )}
+                {selectedShift.shift_notes && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Shift Notes</label>
+                    <div className="bg-gray-50 p-3 rounded text-sm">{selectedShift.shift_notes}</div>
                   </div>
                 )}
               </div>

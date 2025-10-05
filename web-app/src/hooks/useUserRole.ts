@@ -10,6 +10,7 @@ interface UserContext {
     canManageEntries: boolean
     canProcessPayments: boolean
     canViewReports: boolean
+    canEditEntryDates: boolean  // 🛡️ ADMIN-ONLY: Critical permission for entry date modification
   }
 }
 
@@ -37,7 +38,8 @@ export const useUserRole = (): UserContext => {
           canAccessBusinessIntelligence: true,
           canManageEntries: true,
           canProcessPayments: true,
-          canViewReports: true
+          canViewReports: true,
+          canEditEntryDates: true  // 🛡️ ADMIN-ONLY: Entry date editing is restricted to admin
         }
       case 'operator':
         return {
@@ -45,7 +47,8 @@ export const useUserRole = (): UserContext => {
           canAccessBusinessIntelligence: false,
           canManageEntries: true,
           canProcessPayments: true,
-          canViewReports: true
+          canViewReports: true,
+          canEditEntryDates: false  // 🚫 OPERATORS CANNOT EDIT ENTRY DATES (fraud prevention)
         }
       case 'viewer':
         return {
@@ -53,7 +56,8 @@ export const useUserRole = (): UserContext => {
           canAccessBusinessIntelligence: false,
           canManageEntries: false,
           canProcessPayments: false,
-          canViewReports: true
+          canViewReports: true,
+          canEditEntryDates: false  // 🚫 VIEWERS CANNOT EDIT ENTRY DATES
         }
       default:
         return {
@@ -61,7 +65,8 @@ export const useUserRole = (): UserContext => {
           canAccessBusinessIntelligence: false,
           canManageEntries: false,
           canProcessPayments: false,
-          canViewReports: true
+          canViewReports: true,
+          canEditEntryDates: false  // 🚫 DEFAULT: NO ENTRY DATE EDITING
         }
     }
   }

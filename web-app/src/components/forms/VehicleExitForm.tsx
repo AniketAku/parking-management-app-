@@ -161,6 +161,7 @@ interface ExitPaymentFormProps {
   onProcessExit: () => void
   onPrintReceipt: () => void
   loading?: boolean
+  hasInvalidDuration?: boolean
 }
 
 const ExitPaymentForm: React.FC<ExitPaymentFormProps> = ({
@@ -173,7 +174,8 @@ const ExitPaymentForm: React.FC<ExitPaymentFormProps> = ({
   calculatedFee,
   onProcessExit,
   onPrintReceipt,
-  loading
+  loading,
+  hasInvalidDuration
 }) => (
   <Card className="border-2 border-warning-100">
     <CardHeader>
@@ -251,14 +253,26 @@ const ExitPaymentForm: React.FC<ExitPaymentFormProps> = ({
             🖨️ Print Receipt
           </Button>
           
-          <Button 
+          <Button
             onClick={onProcessExit}
-            disabled={loading || !paymentType || !actualAmount}
+            disabled={loading || !paymentType || !actualAmount || hasInvalidDuration}
             variant="success"
             className="px-8 py-3 text-base font-semibold"
           >
             {loading ? 'Processing...' : 'Process Exit'}
           </Button>
+        </div>
+        {hasInvalidDuration && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800 font-medium">
+              🚨 <strong>Invalid Entry Detected:</strong> This vehicle has a future entry date. Exit processing is disabled.
+            </p>
+            <p className="text-xs text-red-600 mt-1">
+              Please contact administrator to correct the entry time before proceeding.
+            </p>
+          </div>
+        )}
+        <div>
         </div>
       </div>
     </CardContent>
@@ -289,6 +303,7 @@ export const VehicleExitForm: React.FC = () => {
   const [duration, setDuration] = useState('')
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [exitedEntry, setExitedEntry] = useState<ParkingEntry | null>(null)
+  const [hasInvalidDuration, setHasInvalidDuration] = useState(false)
 
   // Calculate fee and duration when entry is found or settings change
   useEffect(() => {
@@ -307,6 +322,7 @@ export const VehicleExitForm: React.FC = () => {
           setCalculatedFee(fee)
           setDuration(dur)
           setActualAmount(fee.toString())
+          setHasInvalidDuration(false) // Valid duration
 
           console.log('✅ VehicleExitForm: Fee calculated using unified service', {
             vehicleType: foundEntry.vehicleType,
@@ -316,7 +332,19 @@ export const VehicleExitForm: React.FC = () => {
 
         } catch (error) {
           console.error('❌ VehicleExitForm: Fee calculation error:', error)
-          toast.error('Error calculating parking fee. Please try again.', { duration: 3000 })
+
+          // 🛡️ SECURITY: Check if error is due to invalid duration (future entry date)
+          if (error instanceof Error && error.message.includes('Invalid parking duration')) {
+            setHasInvalidDuration(true)
+            setDuration('Invalid (Future entry date)')
+            setCalculatedFee(0)
+            toast.error('⚠️ Invalid Entry: This vehicle has a future entry date. Cannot process exit.', {
+              duration: 6000,
+              icon: '🚨'
+            })
+          } else {
+            toast.error('Error calculating parking fee. Please try again.', { duration: 3000 })
+          }
         }
       }
 
@@ -487,6 +515,7 @@ export const VehicleExitForm: React.FC = () => {
             onProcessExit={processExit}
             onPrintReceipt={handlePrintReceipt}
             loading={processing}
+            hasInvalidDuration={hasInvalidDuration}
           />
           
           <div className="flex justify-center">

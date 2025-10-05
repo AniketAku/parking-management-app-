@@ -4,6 +4,7 @@ import { SearchFilters, VehicleTable, VehicleDetailsModal, EditEntryModal } from
 import { useSearch } from '../hooks/useSearch'
 import { useParkingData } from '../hooks/useParkingData'
 import { useParkingStore } from '../stores/parkingStore'
+import { useUserRole } from '../hooks/useUserRole'  // 🛡️ SECURITY: Role-based permissions
 import { toast } from 'react-hot-toast'
 import type { ParkingEntry } from '../types'
 
@@ -13,9 +14,12 @@ export const SearchPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
+  // 🛡️ SECURITY: Get user role and permissions
+  const { permissions } = useUserRole()
+
   // Load real parking data from database
   const { entries, loading: dataLoading, error } = useParkingData()
-  
+
   // Get store methods for immediate UI updates
   const { handleEntryUpdate } = useParkingStore()
 
@@ -180,6 +184,7 @@ export const SearchPage: React.FC = () => {
         isOpen={isEditModalOpen}
         onClose={handleCloseEditModal}
         onSuccess={handleEditSuccess}
+        canEditEntryDates={permissions.canEditEntryDates}  // 🛡️ ADMIN-ONLY permission
       />
     </div>
   )

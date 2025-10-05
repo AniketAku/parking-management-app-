@@ -177,69 +177,55 @@ export class ParkingService {
    */
   static async updateEntry(id: string, updates: UpdateParkingEntryRequest): Promise<ParkingEntry> {
     try {
-      // Build update object with only safe columns to handle missing schema columns gracefully
-      const safeUpdateData: any = {}
+      // Build complete update object with all fields (RPC function will use COALESCE to only update provided values)
+      const updateData: any = {}
 
-      // Core columns that should always exist
-      if (updates.transport_name !== undefined) safeUpdateData.transport_name = updates.transport_name
-      if (updates.driver_name !== undefined) safeUpdateData.driver_name = updates.driver_name
-      if (updates.vehicle_type !== undefined) safeUpdateData.vehicle_type = updates.vehicle_type
-      if (updates.exit_time !== undefined) safeUpdateData.exit_time = updates.exit_time
-      if (updates.status !== undefined) safeUpdateData.status = updates.status
-      if (updates.payment_status !== undefined) safeUpdateData.payment_status = updates.payment_status
-      if (updates.notes !== undefined) safeUpdateData.notes = updates.notes
+      // ✅ COMPLETE: All fields including calculated_fee, actual_fee, amount_paid
+      // (After adding columns to Supabase with add-fee-columns-to-supabase.sql)
+      if (updates.transport_name !== undefined) updateData.transport_name = updates.transport_name
+      if (updates.vehicle_number !== undefined) updateData.vehicle_number = updates.vehicle_number
+      if (updates.driver_name !== undefined) updateData.driver_name = updates.driver_name
+      if (updates.vehicle_type !== undefined) updateData.vehicle_type = updates.vehicle_type
+      if (updates.driver_phone !== undefined) updateData.driver_phone = updates.driver_phone
+      if (updates.entry_time !== undefined) updateData.entry_time = updates.entry_time  // 🔐 Admin entry date editing
+      if (updates.exit_time !== undefined) updateData.exit_time = updates.exit_time
+      if (updates.status !== undefined) updateData.status = updates.status
+      if (updates.payment_status !== undefined) updateData.payment_status = updates.payment_status
+      if (updates.payment_type !== undefined) updateData.payment_type = updates.payment_type
+      if (updates.notes !== undefined) updateData.notes = updates.notes
 
-      // First, try updating with only safe columns
-      const { data: entry, error } = await supabase
-        .from('parking_entries')
-        .update(safeUpdateData)
-        .eq('id', id)
-        .select()
-        .single()
+      // 💰 All fee fields (after adding columns to Supabase)
+      if (updates.parking_fee !== undefined) updateData.parking_fee = updates.parking_fee
+      if (updates.calculated_fee !== undefined) updateData.calculated_fee = updates.calculated_fee
+      if (updates.actual_fee !== undefined) updateData.actual_fee = updates.actual_fee
+      if (updates.amount_paid !== undefined) updateData.amount_paid = updates.amount_paid
 
-      // If basic update failed, throw the error
+      console.log('🔧 UPDATE DEBUG - Using RPC to update parking entry:', { id, updates: updateData })
+
+      // Use RPC function to bypass RLS
+      const { data, error } = await supabase
+        .rpc('update_parking_entry_by_id', {
+          target_entry_id: id,
+          entry_updates: updateData
+        })
+
       if (error) {
         throw ErrorHandler.fromSupabaseError(error, {
           component: 'ParkingService',
           action: 'updateEntry',
-          metadata: { entryId: id, updates: safeUpdateData }
+          metadata: { entryId: id, updates: updateData }
         })
       }
 
-      // Try to update extended columns separately (they might not exist)
-      const extendedUpdates: any = {}
-      if (updates.payment_type !== undefined) extendedUpdates.payment_type = updates.payment_type
-      if (updates.parking_fee !== undefined) extendedUpdates.parking_fee = updates.parking_fee
-      if (updates.actual_fee !== undefined) extendedUpdates.actual_fee = updates.actual_fee
-      // calculated_fee removed - column doesn't exist in current database schema
-      if (updates.driver_phone !== undefined) extendedUpdates.driver_phone = updates.driver_phone
-
-      console.log('🔧 UPDATE DEBUG - Extended updates:', extendedUpdates)
-
-      if (Object.keys(extendedUpdates).length > 0) {
-        try {
-          const { data: extendedEntry, error: extendedError } = await supabase
-            .from('parking_entries')
-            .update(extendedUpdates)
-            .eq('id', id)
-            .select()
-            .single()
-
-          if (!extendedError && extendedEntry) {
-            console.log('✅ UPDATE DEBUG - Extended columns updated successfully:', extendedEntry)
-            return transformParkingDataFromDB(extendedEntry)
-          } else {
-            console.warn('⚠️ UPDATE DEBUG - Extended columns update failed:', extendedError?.message)
-            console.warn('⚠️ UPDATE DEBUG - Error details:', extendedError)
-            // Continue with basic entry data since core update succeeded
-          }
-        } catch (extendedUpdateError) {
-          console.warn('⚠️ UPDATE DEBUG - Extended columns exception:', extendedUpdateError)
-          // Continue with basic entry data since core update succeeded
-        }
+      if (!data?.success) {
+        throw new DatabaseError(
+          data?.message || 'Failed to update parking entry',
+          { component: 'ParkingService', action: 'updateEntry', metadata: { entryId: id } }
+        )
       }
 
-      return transformParkingDataFromDB(entry)
+      console.log('✅ UPDATE DEBUG - RPC update successful:', data)
+      return transformParkingDataFromDB(data.data)
     } catch (error) {
       if (error instanceof DatabaseError) {
         throw error

@@ -149,6 +149,12 @@ class ReportGenerationService {
   }> {
     const startTime = Date.now()
 
+    console.log('📊 REPORT SERVICE - Fetching data for date range:', {
+      startDate: dateRange.startDate.toISOString(),
+      endDate: dateRange.endDate.toISOString(),
+      criteria: criteria
+    })
+
     try {
       // Fetch parking sessions with proper date filtering
       const { data: entries } = await api.getParkingEntries({
@@ -156,23 +162,45 @@ class ReportGenerationService {
         dateTo: dateRange.endDate.toISOString()
       }, 1, 10000) // Large limit to get all data
 
+      console.log('📊 REPORT SERVICE - Received entries from API:', {
+        totalEntries: entries.length,
+        firstEntry: entries[0] ? {
+          vehicleNumber: entries[0].vehicleNumber,
+          entryTime: entries[0].entryTime,
+          exitTime: entries[0].exitTime,
+          parkingFee: entries[0].parkingFee
+        } : null
+      })
+
       // Filter entries based on inclusion criteria
       const filteredEntries = entries.filter(entry => {
         const entryTime = new Date(entry.entryTime)
+        const exitTime = entry.exitTime ? new Date(entry.exitTime) : null
 
-        // For date range comparison, add a small buffer to account for millisecond precision
-        // This is especially important for "today" reports where endDate might be very close to current time
-        const endDateWithBuffer = new Date(dateRange.endDate.getTime() + 1000) // Add 1 second buffer
-        const inDateRange = entryTime >= dateRange.startDate && entryTime <= endDateWithBuffer
+        // ✅ FIX: Only apply buffer for current-period reports (within 5 seconds of now)
+        // For historical reports, use exact endDate to prevent including next-day entries
+        const now = new Date()
+        const isCurrentPeriod = dateRange.endDate >= new Date(now.getTime() - 5000) // Within 5 seconds of now
+        const endDateWithBuffer = isCurrentPeriod
+          ? new Date(dateRange.endDate.getTime() + 1000) // Add 1 second buffer for current reports
+          : dateRange.endDate // Use exact endDate for historical reports
 
+        // ✅ FIX: Include sessions where EITHER entry OR exit falls in date range
+        // This allows multi-day sessions to appear in both entry date (as parked) and exit date (with revenue)
+        const entryInRange = entryTime >= dateRange.startDate && entryTime <= endDateWithBuffer
+        const exitInRange = exitTime && exitTime >= dateRange.startDate && exitTime <= endDateWithBuffer
+        const inDateRange = entryInRange || exitInRange
 
         if (!inDateRange) return false
 
-        // Apply inclusion criteria
+        // ✅ FIX: Apply inclusion criteria with complete status and payment filtering
         if (entry.status === 'Active' && !criteria.includeActiveSessions) return false
         if (entry.status === 'Exited' && !criteria.includeCompletedSessions) return false
+        if (entry.status === 'Overstay' && !criteria.includeActiveSessions) return false  // Overstay treated as active
+
         if (entry.paymentStatus === 'Pending' && !criteria.includePendingPayments) return false
         if (entry.paymentStatus === 'Partial' && !criteria.includePartialPayments) return false
+        if (entry.paymentStatus === 'Failed' && !criteria.includePendingPayments) return false  // Failed treated as pending
 
         return true
       })
@@ -252,12 +280,15 @@ class ReportGenerationService {
           updatedAt: (exitTime || entryTime).toISOString()
         }
 
-        // Apply inclusion criteria filtering
+        // ✅ FIX: Apply inclusion criteria filtering with complete status and payment handling
         let includeEntry = true
         if (entry.status === 'Active' && !criteria.includeActiveSessions) includeEntry = false
         if (entry.status === 'Exited' && !criteria.includeCompletedSessions) includeEntry = false
+        if (entry.status === 'Overstay' && !criteria.includeActiveSessions) includeEntry = false
+
         if (entry.paymentStatus === 'Pending' && !criteria.includePendingPayments) includeEntry = false
         if (entry.paymentStatus === 'Partial' && !criteria.includePartialPayments) includeEntry = false
+        if (entry.paymentStatus === 'Failed' && !criteria.includePendingPayments) includeEntry = false
 
         if (includeEntry) {
           entries.push(entry)
@@ -407,13 +438,14 @@ class ReportGenerationService {
     const revenue = parkingEntries
       .filter(e => e.status === 'Exited')
       .reduce((sum, e) => {
-        const feeAmount = e.actualFee || e.calculatedFee || e.parkingFee || 0
+        // ✅ FIX: Use parkingFee which has fallback logic (parking_fee || actual_fee || calculated_fee)
+        const feeAmount = e.parkingFee || 0
         console.log('🔍 REPORT DEBUG - Revenue entry:', {
           vehicleNumber: e.vehicleNumber,
           status: e.status,
+          parkingFee: e.parkingFee,
           actualFee: e.actualFee,
           calculatedFee: e.calculatedFee,
-          parkingFee: e.parkingFee,
           feeAmount,
           previousSum: sum
         })
@@ -449,7 +481,8 @@ class ReportGenerationService {
     const revenue = parkingEntries
       .filter(e => e.status === 'Exited')
       .reduce((sum, e) => {
-        const feeAmount = e.actualFee || e.calculatedFee || e.parkingFee || 0
+        // ✅ FIX: Use parkingFee which has fallback logic (parking_fee || actual_fee || calculated_fee)
+        const feeAmount = e.parkingFee || 0
         return sum + feeAmount
       }, 0)
 
@@ -635,7 +668,8 @@ class ReportGenerationService {
     const totalRevenue = parkingEntries
       .filter(e => e.status === 'Exited')
       .reduce((sum, e) => {
-        const feeAmount = e.actualFee || e.calculatedFee || e.parkingFee || 0
+        // ✅ FIX: Use parkingFee which has fallback logic (parking_fee || actual_fee || calculated_fee)
+        const feeAmount = e.parkingFee || 0
         return sum + feeAmount
       }, 0)
 
@@ -718,7 +752,8 @@ class ReportGenerationService {
         }
       }
 
-      // Generate new detailed report (individual parking entries)
+      // Generate detailed report with entries and summary for UI display
+      // Typed report generators (generateDailyReport, etc.) are used by export service
       const data = await this.generateDetailedReport(dateRange, request.dataInclusionCriteria)
 
       // Cache the result if appropriate
@@ -764,31 +799,16 @@ class ReportGenerationService {
 
   /**
    * === EXPORT FUNCTIONALITY ===
+   * @deprecated Use reportExportService instead - this export functionality is obsolete
+   * reportExportService properly handles typed report structures
    */
   async exportReport(
     report: ReportGenerationResponse,
     config: ExportConfig
   ): Promise<ExportResult> {
-    try {
-      const fileName = this.generateFileName(report.reportType, report.dateRange, config)
-
-      switch (config.format) {
-        case 'pdf':
-          return await this.exportToPDF(report, config, fileName)
-        case 'excel':
-          return await this.exportToExcel(report, config, fileName)
-        case 'csv':
-          return await this.exportToCSV(report, config, fileName)
-        default:
-          throw new Error(`Unsupported export format: ${config.format}`)
-      }
-    } catch (error) {
-      return {
-        success: false,
-        fileName: '',
-        error: error.message
-      }
-    }
+    // ⚠️ DEPRECATED: This method is no longer maintained
+    // Use reportExportService.exportReport() instead
+    throw new Error('reportGenerationService.exportReport() is deprecated. Use reportExportService.exportReport() instead.')
   }
 
   /**
@@ -882,7 +902,8 @@ class ReportGenerationService {
         entries: hourEntries.length,
         exits: hourExits.length,
         revenue: hourExits.reduce((sum, e) => {
-          const feeAmount = e.actualFee || e.calculatedFee || e.parkingFee || 0
+          // ✅ FIX: Use parkingFee which has fallback logic (parking_fee || actual_fee || calculated_fee)
+          const feeAmount = e.parkingFee || 0
           return sum + feeAmount
         }, 0),
         occupancy: hourEntries.filter(e => e.status === 'Active').length
@@ -900,7 +921,8 @@ class ReportGenerationService {
       const existing = breakdown.get(type) || { count: 0, revenue: 0, totalStayTime: 0 }
 
       existing.count++
-      const feeAmount = entry.actualFee || entry.calculatedFee || entry.parkingFee || 0
+      // ✅ FIX: Use parkingFee which has fallback logic (parking_fee || actual_fee || calculated_fee)
+      const feeAmount = entry.parkingFee || 0
       existing.revenue += feeAmount
 
       if (entry.exitTime) {
@@ -929,7 +951,8 @@ class ReportGenerationService {
       const existing = breakdown.get(method) || { count: 0, amount: 0 }
 
       existing.count++
-      const feeAmount = entry.actualFee || entry.calculatedFee || entry.parkingFee || 0
+      // ✅ FIX: Use parkingFee which has fallback logic (parking_fee || actual_fee || calculated_fee)
+      const feeAmount = entry.parkingFee || 0
       existing.amount += feeAmount
 
       breakdown.set(method, existing)
@@ -1582,7 +1605,8 @@ class ReportGenerationService {
           'Out Time': entry.exitTime ? format(new Date(entry.exitTime), 'dd/MM/yyyy HH:mm') : '',
           'Payment Status': entry.paymentStatus || 'Pending',
           'Total Amount': (() => {
-            const feeAmount = entry.actualFee || entry.calculatedFee || entry.parkingFee || 0
+            // ✅ FIX: Use parkingFee which has fallback logic (parking_fee || actual_fee || calculated_fee)
+            const feeAmount = entry.parkingFee || 0
             return `₹${feeAmount.toFixed(2)}`
           })()
         })

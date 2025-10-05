@@ -177,25 +177,20 @@ export class UserService {
   }
 
   /**
-   * Approve a user
+   * Approve a user - Uses RPC to bypass RLS
    */
   static async approveUser(userId: string): Promise<{ success: boolean; message: string }> {
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ 
-          is_approved: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
+      const { data, error } = await supabase
+        .rpc('approve_user_by_id', { target_user_id: userId })
 
       if (error) {
         throw new Error(`Failed to approve user: ${error.message}`)
       }
 
       return {
-        success: true,
-        message: 'User approved successfully!'
+        success: data?.success || false,
+        message: data?.message || 'User approved successfully!'
       }
     } catch (error) {
       console.error('Error approving user:', error)
@@ -235,25 +230,23 @@ export class UserService {
   }
 
   /**
-   * Update user role
+   * Update user role - Uses RPC to bypass RLS
    */
   static async updateUserRole(userId: string, role: 'admin' | 'operator' | 'viewer'): Promise<{ success: boolean; message: string }> {
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ 
-          role,
-          updated_at: new Date().toISOString()
+      const { data, error } = await supabase
+        .rpc('update_user_role_by_id', {
+          target_user_id: userId,
+          new_role: role
         })
-        .eq('id', userId)
 
       if (error) {
         throw new Error(`Failed to update user role: ${error.message}`)
       }
 
       return {
-        success: true,
-        message: `User role updated to ${role} successfully!`
+        success: data?.success || false,
+        message: data?.message || `User role updated to ${role} successfully!`
       }
     } catch (error) {
       console.error('Error updating user role:', error)
@@ -265,25 +258,23 @@ export class UserService {
   }
 
   /**
-   * Update user status (activate/deactivate)
+   * Update user status (activate/deactivate) - Uses RPC to bypass RLS
    */
   static async updateUserStatus(userId: string, isApproved: boolean): Promise<{ success: boolean; message: string }> {
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ 
-          is_approved: isApproved,
-          updated_at: new Date().toISOString()
+      const { data, error } = await supabase
+        .rpc('update_user_approval_status', {
+          target_user_id: userId,
+          approval_status: isApproved
         })
-        .eq('id', userId)
 
       if (error) {
         throw new Error(`Failed to update user status: ${error.message}`)
       }
 
       return {
-        success: true,
-        message: `User ${isApproved ? 'activated' : 'deactivated'} successfully!`
+        success: data?.success || false,
+        message: data?.message || `User ${isApproved ? 'activated' : 'deactivated'} successfully!`
       }
     } catch (error) {
       console.error('Error updating user status:', error)

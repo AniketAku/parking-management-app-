@@ -1,7 +1,5 @@
 import React, { useState } from 'react'
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '../components/ui'
-import { Button } from '../components/ui/Button'
-import { Badge } from '../components/ui/Badge'
+import { Card, CardHeader, CardContent, CardTitle, CardDescription, Button, Badge } from '../components/ui'
 import { ReportGenerator } from '../components/reports/ReportGenerator'
 import { useReportGeneration } from '../hooks/useReportGeneration'
 import { formatDate } from 'date-fns'
@@ -40,105 +38,86 @@ export const ReportsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Fixed Page Header */}
-      <div className="sticky-stats">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary">
-              Reports & Export
-            </h1>
-            <p className="text-text-muted mt-1">
-              Generate comprehensive parking reports with automatic date filtering and export options
-            </p>
-          </div>
-
-          {/* Performance Metrics Summary */}
-          <div className="flex items-center space-x-3">
-            {performanceMetrics.totalReportsGenerated > 0 && (
-              <div className="text-right text-sm">
-                <div className="font-medium text-text-primary">
-                  {performanceMetrics.totalReportsGenerated} reports
-                </div>
-                <div className="text-text-muted">
-                  {formatTime(performanceMetrics.averageGenerationTime)} avg
-                </div>
-              </div>
-            )}
-
-            {/* Quick Actions */}
-            {cacheStatistics.entries > 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={clearCache}
-                className="flex items-center space-x-2"
-              >
-                <span>🗑️</span>
-                <span>Clear Cache</span>
-              </Button>
-            )}
-          </div>
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Reports & Analytics
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Generate and export parking reports
+          </p>
         </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="mt-4">
-            <Card className="border-red-200 bg-red-50">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="w-5 h-5 text-red-600 mt-0.5">
-                      ⚠️
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-red-800">Report Generation Error</h4>
-                      <p className="text-sm text-red-700 mt-1">{error}</p>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={clearError}
-                    className="text-red-600 border-red-300 hover:bg-red-50"
-                  >
-                    Dismiss
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Quick Actions */}
+        <div className="flex items-center gap-3">
+          {performanceMetrics.totalReportsGenerated > 0 && (
+            <div className="text-right">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {performanceMetrics.totalReportsGenerated} reports
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {formatTime(performanceMetrics.averageGenerationTime)} avg
+              </div>
+            </div>
+          )}
 
-
-        {/* View Toggle - Always visible */}
-        <div className="mt-6">
-          <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setActiveView('generator')}
-              className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeView === 'generator'
-                  ? 'bg-white text-primary-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+          {cacheStatistics.entries > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={clearCache}
+              className="text-xs"
             >
-              <span>📝</span>
-              <span>Report Generator</span>
-            </button>
-            <button
-              onClick={() => setActiveView('help')}
-              className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeView === 'help'
-                  ? 'bg-white text-primary-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <span>❓</span>
-              <span>Help & Guide</span>
-            </button>
-          </div>
+              Clear Cache
+            </Button>
+          )}
         </div>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-start justify-between">
+            <div>
+              <h4 className="text-sm font-medium text-red-800 dark:text-red-300">Report Generation Error</h4>
+              <p className="text-sm text-red-700 dark:text-red-400 mt-1">{error}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={clearError}
+              className="text-xs"
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* View Toggle */}
+      <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+        <button
+          onClick={() => setActiveView('generator')}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeView === 'generator'
+              ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          Report Generator
+        </button>
+        <button
+          onClick={() => setActiveView('help')}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeView === 'help'
+              ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          Help & Guide
+        </button>
+      </div>
 
       {/* Scrollable Content Area */}
       <div className="space-y-6">
@@ -146,35 +125,19 @@ export const ReportsPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Report Generator */}
             <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <span>📊</span>
-                    <span>Generate New Report</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Create detailed parking reports with automatic date filtering, data inclusion options, and multiple export formats
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ReportGenerator />
-                </CardContent>
-              </Card>
+              <ReportGenerator />
             </div>
 
             {/* Status & Performance Sidebar */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* System Status */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <span>⚡</span>
-                    <span>System Status</span>
-                  </CardTitle>
+              <Card className="border border-gray-200 dark:border-gray-700">
+                <CardHeader className="border-b border-gray-200 dark:border-gray-700 pb-3">
+                  <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">System Status</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-text-muted">Status</span>
+                <CardContent className="space-y-3 pt-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Status</span>
                     <Badge variant={isGenerating ? "warning" : isExporting ? "secondary" : "success"}>
                       {isGenerating ? "Generating..." : isExporting ? "Exporting..." : "Ready"}
                     </Badge>
@@ -182,14 +145,14 @@ export const ReportsPage: React.FC = () => {
 
                   {performanceMetrics.totalReportsGenerated > 0 && (
                     <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-text-muted">Reports Generated</span>
-                        <span className="font-semibold text-primary-600">{performanceMetrics.totalReportsGenerated}</span>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-400">Reports</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{performanceMetrics.totalReportsGenerated}</span>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-text-muted">Average Time</span>
-                        <span className="font-semibold text-success-600">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-400">Avg Time</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
                           {performanceMetrics.averageGenerationTime > 0
                             ? formatTime(performanceMetrics.averageGenerationTime)
                             : 'N/A'
@@ -200,15 +163,15 @@ export const ReportsPage: React.FC = () => {
                   )}
 
                   {cacheStatistics.entries > 0 && (
-                    <div className="pt-4 border-t border-border-light">
+                    <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-primary-600">
+                        <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
                           {cacheStatistics.hitRate.toFixed(0)}%
                         </div>
-                        <div className="text-text-muted text-sm">Cache Hit Rate</div>
-                      </div>
-                      <div className="text-center text-xs text-text-muted mt-2">
-                        {cacheStatistics.entries} cached • {formatFileSize(cacheStatistics.size)}
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Cache Hit Rate</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {cacheStatistics.entries} cached • {formatFileSize(cacheStatistics.size)}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -217,50 +180,47 @@ export const ReportsPage: React.FC = () => {
 
               {/* Current Report Info */}
               {currentReport && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 text-base">
-                      <span>📄</span>
-                      <span>Current Report</span>
-                    </CardTitle>
+                <Card className="border border-gray-200 dark:border-gray-700">
+                  <CardHeader className="border-b border-gray-200 dark:border-gray-700 pb-3">
+                    <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Current Report</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 pt-4">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-text-secondary">Type</span>
+                      <span className="text-gray-600 dark:text-gray-400">Type</span>
                       <Badge variant="primary">{currentReport.metadata.reportType.charAt(0).toUpperCase() + currentReport.metadata.reportType.slice(1)}</Badge>
                     </div>
 
                     <div className="text-sm">
-                      <span className="text-text-secondary">Date Range</span>
-                      <div className="font-medium text-xs mt-1">
+                      <span className="text-gray-600 dark:text-gray-400 block mb-1">Date Range</span>
+                      <div className="text-xs text-gray-900 dark:text-gray-100">
                         {formatDate(new Date(currentReport.metadata.dateRange.startDate), 'MMM dd, yyyy')} -{' '}
                         {formatDate(new Date(currentReport.metadata.dateRange.endDate), 'MMM dd, yyyy')}
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-text-secondary">Records</span>
-                      <span className="font-medium">{currentReport.data.sessions.length}</span>
+                      <span className="text-gray-600 dark:text-gray-400">Records</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{currentReport.data.sessions.length}</span>
                     </div>
 
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-text-secondary">Total Revenue</span>
-                      <span className="font-medium text-green-600">
+                      <span className="text-gray-600 dark:text-gray-400">Revenue</span>
+                      <span className="font-medium text-green-600 dark:text-green-400">
                         ₹{currentReport.summary.totalRevenue.toLocaleString('en-IN')}
                       </span>
                     </div>
 
                     {currentReport.metadata.generationTime && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-text-secondary">Generation Time</span>
-                        <span className="font-medium">
+                        <span className="text-gray-600 dark:text-gray-400">Gen. Time</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
                           {formatTime(currentReport.metadata.generationTime)}
                         </span>
                       </div>
                     )}
 
-                    <div className="pt-3 border-t">
-                      <div className="text-xs text-text-muted">
+                    <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
                         Generated: {formatDate(new Date(currentReport.metadata.generatedAt), 'MMM dd, yyyy HH:mm')}
                       </div>
                     </div>

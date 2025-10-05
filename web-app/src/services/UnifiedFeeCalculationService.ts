@@ -72,6 +72,19 @@ class UnifiedFeeCalculationService {
       const diffMs = exit.getTime() - entry.getTime()
       const diffHours = diffMs / (1000 * 60 * 60)
 
+      // 🛡️ SECURITY CHECK: Detect negative duration (exit before entry / future entry date)
+      if (diffHours < 0) {
+        console.error('❌ INVALID ENTRY: Negative parking duration detected!', {
+          entryTime,
+          exitTime: exitTime || 'current time',
+          diffHours: diffHours.toFixed(2),
+          possibleCause: 'Future entry date or exit before entry',
+          vehicleType,
+          debugContext
+        })
+        throw new Error(`Invalid parking duration: Entry time (${entry.toLocaleString()}) is after exit time (${exit.toLocaleString()}). This may indicate a future-dated entry or data corruption.`)
+      }
+
       // 🎯 NEW 3-SCENARIO BILLING LOGIC:
       // Scenario 1: Less than 24 hours = 1 day minimum charge
       // Scenario 2: 24+ hours = actual number of days (rounded up)
@@ -108,6 +121,12 @@ class UnifiedFeeCalculationService {
 
     const diffMs = exit.getTime() - entry.getTime()
     const diffHours = diffMs / (1000 * 60 * 60)
+
+    // 🛡️ SECURITY CHECK: Handle negative duration (invalid entry)
+    if (diffHours < 0) {
+      const minutes = Math.floor(Math.abs(diffMs) / (1000 * 60))
+      return `Invalid: -${minutes} minutes (Future entry date detected)`
+    }
 
     if (diffHours < 1) {
       const minutes = Math.floor(diffMs / (1000 * 60))

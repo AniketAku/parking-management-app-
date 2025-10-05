@@ -101,6 +101,17 @@ export const VehicleEntryForm: React.FC<VehicleEntryFormProps> = ({
       validationErrors.entryDate = 'Entry date is required'
     }
 
+    // 🛡️ SECURITY CHECK: Prevent future entry dates
+    if (data.entryDate && data.entryTime) {
+      const entryDateTime = new Date(`${data.entryDate}T${data.entryTime}:00`)
+      const currentTime = new Date()
+
+      if (entryDateTime > currentTime) {
+        validationErrors.entryDate = `Entry date/time cannot be in the future (entered: ${entryDateTime.toLocaleString()})`
+        validationErrors.entryTime = 'Future time not allowed'
+      }
+    }
+
     return validationErrors
   }
 

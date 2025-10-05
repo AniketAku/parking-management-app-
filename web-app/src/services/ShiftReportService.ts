@@ -710,41 +710,34 @@ export class ShiftReportService {
   // Get available operators for report filtering
   async getAvailableOperators(): Promise<Array<{ id: string; name: string }>> {
     try {
-      // First, get unique user_ids from shift_sessions
+      // Get unique employee names from shift_sessions
       const { data: sessionData, error: sessionError } = await supabase
         .from('shift_sessions')
-        .select('user_id')
-        .not('user_id', 'is', null);
+        .select('employee_name, employee_id')
+        .not('employee_name', 'is', null);
 
       if (sessionError) {
         console.error('Error fetching shift sessions:', sessionError);
         return [];
       }
 
-      // Get unique user IDs
-      const uniqueUserIds = [...new Set(sessionData?.map(session => session.user_id) || [])];
-
-      if (uniqueUserIds.length === 0) {
+      if (!sessionData || sessionData.length === 0) {
         return [];
       }
 
-      // Fetch user details for these user IDs
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, role')
-        .in('id', uniqueUserIds);
+      // Get unique employee names
+      const uniqueOperators = sessionData.reduce((acc, session) => {
+        if (session.employee_name && !acc.find(op => op.name === session.employee_name)) {
+          acc.push({
+            id: session.employee_id || session.employee_name,
+            name: session.employee_name
+          });
+        }
+        return acc;
+      }, [] as Array<{ id: string; name: string }>);
 
-      if (userError) {
-        console.error('Error fetching user data:', userError);
-        return [];
-      }
-
-      // Transform user data for return
-      return userData?.map(user => ({
-        id: user.id,
-        name: `User ${user.id.substring(0, 8)}`,
-        role: user.role
-      })).sort((a, b) => a.name.localeCompare(b.name)) || [];
+      // Sort by name
+      return uniqueOperators.sort((a, b) => a.name.localeCompare(b.name));
 
     } catch (error) {
       console.error('Error in getAvailableOperators:', error);
@@ -755,11 +748,11 @@ export class ShiftReportService {
   // Get available shift periods for filtering
   async getAvailableShiftPeriods(): Promise<Array<{ id: string; start_time: string; end_time: string; employee_name: string }>> {
     try {
-      // First, get shift sessions
+      // Get shift sessions with employee information
       const { data: shiftData, error: shiftError } = await supabase
         .from('shift_sessions')
-        .select('id, start_time, end_time, user_id, status')
-        .order('start_time', { ascending: false })
+        .select('id, shift_start_time, shift_end_time, employee_name, status')
+        .order('shift_start_time', { ascending: false })
         .limit(50);
 
       if (shiftError) {
@@ -771,34 +764,12 @@ export class ShiftReportService {
         return [];
       }
 
-      // Get unique user IDs from the shifts
-      const uniqueUserIds = [...new Set(shiftData.map(shift => shift.user_id).filter(id => id !== null))];
-
-      // Fetch user details if we have user IDs
-      let userMap = new Map();
-      if (uniqueUserIds.length > 0) {
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id')
-          .in('id', uniqueUserIds);
-
-        if (userError) {
-          console.error('Error fetching user data:', userError);
-        } else {
-          userData?.forEach(user => {
-            userMap.set(user.id, user);
-          });
-        }
-      }
-
-      // Combine shift data with user data
+      // Return shift data with proper column mapping
       return shiftData.map(shift => ({
         id: shift.id,
-        start_time: shift.start_time,
-        end_time: shift.end_time || 'Active',
-        employee_name: shift.user_id && userMap.has(shift.user_id)
-          ? `User ${shift.user_id.substring(0, 8)}`
-          : 'Unknown',
+        start_time: shift.shift_start_time,
+        end_time: shift.shift_end_time || 'Active',
+        employee_name: shift.employee_name || 'Unknown',
         status: shift.status
       }));
 
@@ -827,17 +798,18 @@ export class ShiftReportService {
         .from('shift_sessions')
         .select(`
           id,
-          start_time,
-          end_time,
+          shift_start_time,
+          shift_end_time,
           status,
           total_revenue,
-          cash_collected,
-          digital_collected,
-          user_id
+          opening_cash_amount,
+          closing_cash_amount,
+          employee_id,
+          employee_name
         `)
-        .gte('start_time', filters.startDate.toISOString())
-        .lte('start_time', filters.endDate.toISOString())
-        .order('start_time', { ascending: false });
+        .gte('shift_start_time', filters.startDate.toISOString())
+        .lte('shift_start_time', filters.endDate.toISOString())
+        .order('shift_start_time', { ascending: false });
 
       if (error) {
         throw new Error(`Failed to fetch shifts: ${error.message}`);
@@ -856,48 +828,19 @@ export class ShiftReportService {
         };
       }
 
-      // Get unique user IDs from the shifts
-      const uniqueUserIds = [...new Set(shifts.map(shift => shift.user_id).filter(id => id !== null))];
-
-      // Fetch user details if we have user IDs
-      let userMap = new Map();
-      if (uniqueUserIds.length > 0) {
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id')
-          .in('id', uniqueUserIds);
-
-        if (userError) {
-          console.error('Error fetching user data:', userError);
-        } else {
-          userData?.forEach(user => {
-            userMap.set(user.id, user);
-          });
-        }
-      }
-
-      // Combine shift data with user data and filter by operator if specified
-      const allShiftsWithUsers = shifts.map(shift => ({
-        ...shift,
-        userEmail: shift.user_id || null,
-        operatorName: shift.user_id && userMap.has(shift.user_id)
-          ? `User ${shift.user_id.substring(0, 8)}`
-          : 'Unknown'
-      }));
-
       // Filter by operator if specified
       const filteredShifts = filters.operatorFilter
-        ? allShiftsWithUsers.filter(shift => shift.operatorName === filters.operatorFilter)
-        : allShiftsWithUsers;
+        ? shifts.filter(shift => shift.employee_name === filters.operatorFilter)
+        : shifts;
 
       // Transform shifts data
       const transformedShifts = filteredShifts.map(shift => ({
         id: shift.id,
-        operatorName: shift.operatorName,
-        startTime: shift.start_time,
-        endTime: shift.end_time || 'Active',
-        durationHours: shift.end_time
-          ? Math.round((new Date(shift.end_time).getTime() - new Date(shift.start_time).getTime()) / (1000 * 60 * 60) * 10) / 10
+        operatorName: shift.employee_name || 'Unknown',
+        startTime: shift.shift_start_time,
+        endTime: shift.shift_end_time || 'Active',
+        durationHours: shift.shift_end_time
+          ? Math.round((new Date(shift.shift_end_time).getTime() - new Date(shift.shift_start_time).getTime()) / (1000 * 60 * 60) * 10) / 10
           : 0,
         status: shift.status
       }));
@@ -905,8 +848,8 @@ export class ShiftReportService {
       // Calculate financial summary
       const financialSummary = {
         totalRevenue: filteredShifts.reduce((sum, shift) => sum + (shift.total_revenue || 0), 0),
-        cashRevenue: filteredShifts.reduce((sum, shift) => sum + (shift.cash_collected || 0), 0),
-        digitalRevenue: filteredShifts.reduce((sum, shift) => sum + (shift.digital_collected || 0), 0),
+        cashRevenue: filteredShifts.reduce((sum, shift) => sum + (shift.closing_cash_amount || 0), 0),
+        digitalRevenue: 0, // Would need payment data from parking_entries
         pendingRevenue: 0 // Would need additional query for pending payments
       };
 

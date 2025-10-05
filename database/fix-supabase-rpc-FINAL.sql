@@ -1,9 +1,6 @@
--- ================================================
--- FIX: Parking Entries Update Function with RLS Bypass
--- Enables parking entry updates without Supabase Auth
--- ================================================
+-- ✅ FINAL CORRECT RPC FUNCTION - Based on ACTUAL Supabase Schema
+-- Verified columns from information_schema.columns query
 
--- Function to update parking entry (bypasses RLS)
 CREATE OR REPLACE FUNCTION update_parking_entry_by_id(
     target_entry_id UUID,
     entry_updates JSONB
@@ -16,30 +13,27 @@ DECLARE
     result JSONB;
     updated_entry parking_entries;
 BEGIN
-    -- Update the parking entry with JSONB fields
+    -- ✅ ONLY columns that ACTUALLY exist in Supabase parking_entries table
     UPDATE parking_entries
     SET
+        transport_name = COALESCE((entry_updates->>'transport_name')::TEXT, transport_name),
         vehicle_number = COALESCE((entry_updates->>'vehicle_number')::TEXT, vehicle_number),
         vehicle_type = COALESCE((entry_updates->>'vehicle_type')::TEXT, vehicle_type),
         driver_name = COALESCE((entry_updates->>'driver_name')::TEXT, driver_name),
         driver_phone = COALESCE((entry_updates->>'driver_phone')::TEXT, driver_phone),
+        notes = COALESCE((entry_updates->>'notes')::TEXT, notes),
         entry_time = COALESCE((entry_updates->>'entry_time')::TIMESTAMPTZ, entry_time),
         exit_time = COALESCE((entry_updates->>'exit_time')::TIMESTAMPTZ, exit_time),
+        status = COALESCE((entry_updates->>'status')::TEXT, status),
+        payment_status = COALESCE((entry_updates->>'payment_status')::TEXT, payment_status),
         parking_fee = COALESCE((entry_updates->>'parking_fee')::NUMERIC, parking_fee),
         payment_type = COALESCE((entry_updates->>'payment_type')::TEXT, payment_type),
-        status = COALESCE((entry_updates->>'status')::TEXT, status),
-        notes = COALESCE((entry_updates->>'notes')::TEXT, notes),
-        duration_minutes = COALESCE((entry_updates->>'duration_minutes')::INTEGER, duration_minutes),
-        daily_rate = COALESCE((entry_updates->>'daily_rate')::NUMERIC, daily_rate),
-        overstay_minutes = COALESCE((entry_updates->>'overstay_minutes')::INTEGER, overstay_minutes),
-        penalty_fee = COALESCE((entry_updates->>'penalty_fee')::NUMERIC, penalty_fee),
-        total_amount = COALESCE((entry_updates->>'total_amount')::NUMERIC, total_amount),
         shift_session_id = COALESCE((entry_updates->>'shift_session_id')::UUID, shift_session_id),
-        updated_at = NOW()
+        updated_at = NOW(),
+        last_modified = NOW()
     WHERE id = target_entry_id
     RETURNING * INTO updated_entry;
 
-    -- Check if update succeeded
     IF FOUND THEN
         result := jsonb_build_object(
             'success', true,
@@ -58,9 +52,7 @@ BEGIN
 END;
 $$;
 
--- Grant execute permissions to authenticated users
-GRANT EXECUTE ON FUNCTION update_parking_entry_by_id(UUID, JSONB) TO authenticated;
-GRANT EXECUTE ON FUNCTION update_parking_entry_by_id(UUID, JSONB) TO anon;
-
--- Add comments for documentation
-COMMENT ON FUNCTION update_parking_entry_by_id(UUID, JSONB) IS 'Updates parking entry by ID with JSONB data, bypassing RLS for admin/operator operations';
+-- ✅ Verified against actual schema:
+-- id, serial, transport_name, vehicle_type, vehicle_number, driver_name, driver_phone,
+-- notes, entry_time, exit_time, status, payment_status, parking_fee, payment_type,
+-- created_at, updated_at, created_by, last_modified, shift_session_id

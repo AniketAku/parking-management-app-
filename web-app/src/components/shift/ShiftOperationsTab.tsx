@@ -4,6 +4,7 @@ import { ShiftLinkingState, ShiftLinkingMetrics } from '../../hooks/useShiftLink
 import { useCurrentUser } from '../../hooks/useAuth'
 import { Card, CardHeader, CardContent } from '../ui'
 import { Button } from '../ui/Button'
+import { ShiftEndReconciliation } from './ShiftEndReconciliation'
 import toast from 'react-hot-toast'
 
 interface ShiftOperationsTabProps {
@@ -55,6 +56,9 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
     currentCash: 0,
     notes: ''
   })
+  const [shiftOpeningCash, setShiftOpeningCash] = useState<number>(0)
+  const [hasSignificantDiscrepancy, setHasSignificantDiscrepancy] = useState(false)
+  const [discrepancyAmount, setDiscrepancyAmount] = useState<number>(0)
 
   // Reset forms when active shift changes
   useEffect(() => {
@@ -69,22 +73,53 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
       const loadSuggestedCash = async () => {
         const { data: lastShift } = await supabase
           .from('shift_sessions')
-          .select('cash_collected')
+          .select('closing_cash_amount')
           .eq('status', 'completed')
-          .order('end_time', { ascending: false })
+          .order('shift_end_time', { ascending: false })
           .limit(1)
           .single()
 
-        if (lastShift?.cash_collected) {
+        if (lastShift?.closing_cash_amount) {
           setStartShiftData(prev => ({
             ...prev,
-            startingCash: lastShift.cash_collected
+            startingCash: lastShift.closing_cash_amount
           }))
         }
       }
       loadSuggestedCash()
     }
   }, [activeOperation])
+
+  // Load shift opening cash when ending shift operation
+  useEffect(() => {
+    if (activeOperation === 'end' && linkingState.activeShiftId) {
+      const loadShiftDetails = async () => {
+        const { data: shiftDetails } = await supabase
+          .from('shift_sessions')
+          .select('opening_cash_amount')
+          .eq('id', linkingState.activeShiftId)
+          .single()
+
+        if (shiftDetails?.opening_cash_amount !== undefined) {
+          setShiftOpeningCash(shiftDetails.opening_cash_amount)
+        }
+      }
+      loadShiftDetails()
+    }
+  }, [activeOperation, linkingState.activeShiftId])
+
+  // Reconciliation callbacks
+  const handleClosingCashSuggestion = useCallback((suggestedAmount: number) => {
+    setEndShiftData(prev => ({
+      ...prev,
+      endingCash: suggestedAmount
+    }))
+  }, [])
+
+  const handleDiscrepancyDetected = useCallback((discrepancy: number, isSignificant: boolean) => {
+    setDiscrepancyAmount(discrepancy)
+    setHasSignificantDiscrepancy(isSignificant)
+  }, [])
 
   // Start new shift
   const handleStartShift = useCallback(async () => {
@@ -104,23 +139,23 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
       // Get the last completed shift's ending cash to use as opening cash suggestion
       const { data: lastShift } = await supabase
         .from('shift_sessions')
-        .select('cash_collected')
+        .select('closing_cash_amount')
         .eq('status', 'completed')
-        .order('end_time', { ascending: false })
+        .order('shift_end_time', { ascending: false })
         .limit(1)
         .single()
 
-      const suggestedOpeningCash = lastShift?.cash_collected || 0
+      const suggestedOpeningCash = lastShift?.closing_cash_amount || 0
 
       const { data: newShift, error } = await supabase
         .from('shift_sessions')
         .insert({
-          user_id: user?.id, // Use authenticated user's ID
-          start_time: new Date().toISOString(),
+          employee_id: user?.id, // Use authenticated user's ID
+          shift_start_time: new Date().toISOString(),
           status: 'active',
-          operator_name: startShiftData.operatorName, // Store the human-readable operator name
-          opening_cash: startShiftData.startingCash || suggestedOpeningCash, // Use manual input or suggested from last shift
-          notes: startShiftData.notes // Store the notes
+          employee_name: startShiftData.operatorName, // Store the human-readable operator name
+          opening_cash_amount: startShiftData.startingCash || suggestedOpeningCash, // Use manual input or suggested from last shift
+          shift_notes: startShiftData.notes // Store the notes
         })
         .select()
         .single()
@@ -154,18 +189,44 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
       return
     }
 
+    // Warn about significant discrepancy
+    if (hasSignificantDiscrepancy && !endShiftData.isEmergency) {
+      const discrepancyMessage = discrepancyAmount > 0
+        ? `Excess cash of ₹${Math.abs(discrepancyAmount).toFixed(2)} detected.`
+        : `Cash shortage of ₹${Math.abs(discrepancyAmount).toFixed(2)} detected.`
+
+      const confirmEnd = window.confirm(
+        `⚠️ Cash Discrepancy Detected!\n\n${discrepancyMessage}\n\n` +
+        `Please verify:\n` +
+        `- All transactions are recorded correctly\n` +
+        `- Cash count is accurate\n` +
+        `- No unreported expenses or deposits\n\n` +
+        `Do you want to proceed with ending the shift?`
+      )
+
+      if (!confirmEnd) {
+        toast.error('Shift end cancelled. Please verify cash and transactions.')
+        return
+      }
+    }
+
     try {
       setOperationLoading(true)
 
       const endTime = new Date().toISOString()
 
+      // Include discrepancy note if significant
+      const finalNotes = hasSignificantDiscrepancy
+        ? `${endShiftData.notes ? endShiftData.notes + ' | ' : ''}Cash discrepancy: ${discrepancyAmount > 0 ? '+' : ''}₹${discrepancyAmount.toFixed(2)}`
+        : endShiftData.notes
+
       const { error } = await supabase
         .from('shift_sessions')
         .update({
-          end_time: endTime,
-          cash_collected: endShiftData.endingCash,  // Store the ending cash amount
-          status: 'completed',  // Mark shift as completed
-          notes: endShiftData.notes // Update notes with end shift notes
+          shift_end_time: endTime,
+          closing_cash_amount: endShiftData.endingCash,
+          status: endShiftData.isEmergency ? 'emergency_ended' : 'completed',
+          shift_notes: finalNotes
         })
         .eq('id', linkingState.activeShiftId)
 
@@ -173,12 +234,14 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
 
       toast.success(endShiftData.isEmergency ? 'Shift ended (Emergency)' : 'Shift completed successfully')
 
-      // Reset form
+      // Reset form and state
       setEndShiftData({
         endingCash: 0,
         notes: '',
         isEmergency: false
       })
+      setHasSignificantDiscrepancy(false)
+      setDiscrepancyAmount(0)
       setActiveOperation(null)
 
       // Refresh data
@@ -189,7 +252,7 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
     } finally {
       setOperationLoading(false)
     }
-  }, [linkingState.activeShiftId, endShiftData, onRefresh])
+  }, [linkingState.activeShiftId, endShiftData, onRefresh, hasSignificantDiscrepancy, discrepancyAmount])
 
   // Handover to new operator
   const handleHandover = useCallback(async () => {
@@ -213,11 +276,10 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
       const { error: endError } = await supabase
         .from('shift_sessions')
         .update({
-          end_time: handoverTime,
-          cash_collected: handoverData.currentCash,  // Updated: matches database column
-          status: 'completed'  // Updated: Handover completes current shift
-          // Note: end_notes column doesn't exist in database schema
-          // Handover notes: ${handoverData.newOperatorName}${handoverData.notes ? ` - ${handoverData.notes}` : ''}
+          shift_end_time: handoverTime,
+          closing_cash_amount: handoverData.currentCash,
+          status: 'completed',
+          shift_notes: `Handover to ${handoverData.newOperatorName}${handoverData.notes ? ` - ${handoverData.notes}` : ''}`
         })
         .eq('id', linkingState.activeShiftId)
 
@@ -227,11 +289,12 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
       const { data: newShift, error: startError } = await supabase
         .from('shift_sessions')
         .insert({
-          user_id: user?.id, // Use authenticated user's ID (will need to be updated for new operator)
-          start_time: handoverTime,  // Updated: correct column name
-          status: 'active'
-          // Notes: starting_cash and notes columns don't exist in database schema
-          // startingCash: handoverData.currentCash, handover notes available in UI
+          employee_id: user?.id, // Use authenticated user's ID
+          employee_name: handoverData.newOperatorName, // New operator name
+          shift_start_time: handoverTime,
+          status: 'active',
+          opening_cash_amount: handoverData.currentCash, // Starting cash from previous shift
+          shift_notes: `Shift handed over from previous operator${handoverData.notes ? ` - ${handoverData.notes}` : ''}`
         })
         .select()
         .single()
@@ -333,71 +396,87 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
 
       case 'end':
         return (
-          <Card className="mt-6">
-            <CardHeader>
-              <h3 className="text-xl font-semibold text-gray-900">End Current Shift</h3>
-              <p className="text-sm text-gray-600">Complete the current shift session</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ending Cash (₹)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={endShiftData.endingCash}
-                  onChange={(e) => setEndShiftData(prev => ({ ...prev, endingCash: parseFloat(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="0.00"
-                />
-              </div>
+          <>
+            <Card className="mt-6">
+              <CardHeader>
+                <h3 className="text-xl font-semibold text-gray-900">End Current Shift</h3>
+                <p className="text-sm text-gray-600">Complete the current shift session with cash reconciliation</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ending Cash (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={endShiftData.endingCash}
+                    onChange={(e) => setEndShiftData(prev => ({ ...prev, endingCash: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Count and enter closing cash amount"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    💡 Count all cash in the drawer and enter the total amount
+                  </p>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  End Notes (Optional)
-                </label>
-                <textarea
-                  value={endShiftData.notes}
-                  onChange={(e) => setEndShiftData(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Notes about shift end..."
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    End Notes (Optional)
+                  </label>
+                  <textarea
+                    value={endShiftData.notes}
+                    onChange={(e) => setEndShiftData(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Notes about shift end, issues, or discrepancies..."
+                  />
+                </div>
 
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="emergency-end"
-                  checked={endShiftData.isEmergency}
-                  onChange={(e) => setEndShiftData(prev => ({ ...prev, isEmergency: e.target.checked }))}
-                  className="mr-2"
-                />
-                <label htmlFor="emergency-end" className="text-sm text-gray-700">
-                  Emergency End (unexpected termination)
-                </label>
-              </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="emergency-end"
+                    checked={endShiftData.isEmergency}
+                    onChange={(e) => setEndShiftData(prev => ({ ...prev, isEmergency: e.target.checked }))}
+                    className="mr-2"
+                  />
+                  <label htmlFor="emergency-end" className="text-sm text-gray-700">
+                    Emergency End (unexpected termination)
+                  </label>
+                </div>
 
-              <div className="flex space-x-3 pt-4">
-                <Button
-                  onClick={handleEndShift}
-                  disabled={operationLoading}
-                  className={`flex-1 ${endShiftData.isEmergency ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                >
-                  {operationLoading ? 'Ending...' : (endShiftData.isEmergency ? 'Emergency End' : 'End Shift')}
-                </Button>
-                <Button
-                  onClick={() => setActiveOperation(null)}
-                  variant="secondary"
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex space-x-3 pt-4">
+                  <Button
+                    onClick={handleEndShift}
+                    disabled={operationLoading}
+                    className={`flex-1 ${endShiftData.isEmergency ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  >
+                    {operationLoading ? 'Ending...' : (endShiftData.isEmergency ? 'Emergency End' : 'End Shift')}
+                  </Button>
+                  <Button
+                    onClick={() => setActiveOperation(null)}
+                    variant="secondary"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Cash Reconciliation Component */}
+            {linkingState.activeShiftId && (
+              <ShiftEndReconciliation
+                shiftId={linkingState.activeShiftId}
+                openingCashAmount={shiftOpeningCash}
+                enteredClosingCash={endShiftData.endingCash}
+                onClosingCashSuggestion={handleClosingCashSuggestion}
+                onDiscrepancyDetected={handleDiscrepancyDetected}
+              />
+            )}
+          </>
         )
 
       case 'handover':

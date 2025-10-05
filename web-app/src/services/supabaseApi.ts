@@ -51,10 +51,18 @@ class SupabaseApiService {
     if (filters?.status) {
       query = query.eq('status', filters.status)
     }
-    if (filters?.dateFrom) {
+
+    // ✅ FIX: For date filtering, use OR logic to include multi-day sessions
+    // Include entries where EITHER entry_time OR exit_time falls within the date range
+    if (filters?.dateFrom && filters?.dateTo) {
+      const dateFromISO = filters.dateFrom instanceof Date ? filters.dateFrom.toISOString() : filters.dateFrom
+      const dateToISO = filters.dateTo instanceof Date ? filters.dateTo.toISOString() : filters.dateTo
+
+      // Use Supabase .or() to create: (entry_time in range) OR (exit_time in range)
+      query = query.or(`and(entry_time.gte.${dateFromISO},entry_time.lte.${dateToISO}),and(exit_time.gte.${dateFromISO},exit_time.lte.${dateToISO})`)
+    } else if (filters?.dateFrom) {
       query = query.gte('entry_time', filters.dateFrom instanceof Date ? filters.dateFrom.toISOString() : filters.dateFrom)
-    }
-    if (filters?.dateTo) {
+    } else if (filters?.dateTo) {
       query = query.lte('entry_time', filters.dateTo instanceof Date ? filters.dateTo.toISOString() : filters.dateTo)
     }
 
@@ -64,6 +72,19 @@ class SupabaseApiService {
     query = query.range(from, to)
 
     const { data, error, count } = await query
+
+    console.log('🔍 SUPABASE API - Query results:', {
+      filters: filters,
+      rawDataCount: data?.length || 0,
+      error: error?.message,
+      firstEntry: data?.[0] ? {
+        id: data[0].id,
+        vehicle_number: data[0].vehicle_number,
+        entry_time: data[0].entry_time,
+        exit_time: data[0].exit_time,
+        actual_fee: data[0].actual_fee
+      } : null
+    })
 
     if (error) {
       throw new Error(`Failed to fetch parking entries: ${error.message}`)

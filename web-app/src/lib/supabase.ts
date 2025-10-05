@@ -216,20 +216,23 @@ const createSecureMockSupabase = () => {
         return createMockQueryBuilder(sampleData)
       }
       if (table === 'shift_sessions') {
-        // Mock shift sessions data for demo mode
+        // Mock shift sessions data for demo mode (using correct schema column names)
         const mockShiftData = [{
           id: 'demo-shift-001',
-          user_id: 'demo-user-001',
-          start_time: new Date().toISOString(),
-          end_time: null,
+          employee_id: 'demo-user-001',
+          employee_name: 'Demo Operator',
+          employee_phone: '9876543210',
+          shift_start_time: new Date().toISOString(),
+          shift_end_time: null,
           status: 'active',
+          opening_cash_amount: 1000,
+          closing_cash_amount: null,
+          shift_notes: 'Demo shift session',
           total_sessions: 0,
           total_payments: 0,
           linked_sessions: 0,
           linked_payments: 0,
           total_revenue: 0,
-          cash_collected: 0,
-          digital_collected: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }]

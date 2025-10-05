@@ -1,20 +1,9 @@
 // Report Export Service with Proper Filename Conventions
 
-import { format as formatDate } from 'date-fns'
+import { format } from 'date-fns'
 import jsPDF from 'jspdf'
-// @ts-ignore
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
-
-// Extend jsPDF type to include autoTable method
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF
-    lastAutoTable?: {
-      finalY: number
-    }
-  }
-}
 
 // Create extended jsPDF type
 type ExtendedJsPDF = jsPDF & {
@@ -42,32 +31,32 @@ class ReportExportService {
   /**
    * === FILENAME CONVENTIONS ===
    */
-  generateFileName(reportType: ReportType, dateRange: DateBoundary, format: string, customName?: string): string {
+  generateFileName(reportType: ReportType, dateRange: DateBoundary, exportFormat: string, customName?: string): string {
     if (customName) {
-      return `${customName}.${format}`
+      return `${customName}.${exportFormat}`
     }
 
-    const startDate = formatDate(dateRange.startDate, 'yyyy-MM-dd')
-    const endDate = formatDate(dateRange.endDate, 'yyyy-MM-dd')
+    const startDate = format(dateRange.startDate, 'yyyy-MM-dd')
+    const endDate = format(dateRange.endDate, 'yyyy-MM-dd')
 
     switch (reportType) {
       case 'daily':
-        return `Parking_Report_Daily_${startDate}.${format}`
+        return `Parking_Report_Daily_${startDate}.${exportFormat}`
 
       case 'weekly':
-        const weekNumber = formatDate(dateRange.startDate, 'ww')
-        const year = formatDate(dateRange.startDate, 'yyyy')
-        return `Parking_Report_Weekly_${year}-${weekNumber.padStart(2, '0')}.${format}`
+        const weekNumber = format(dateRange.startDate, 'ww')
+        const year = format(dateRange.startDate, 'yyyy')
+        return `Parking_Report_Weekly_${year}-${weekNumber.padStart(2, '0')}.${exportFormat}`
 
       case 'monthly':
-        const monthYear = formatDate(dateRange.startDate, 'yyyy-MM')
-        return `Parking_Report_Monthly_${monthYear}.${format}`
+        const monthYear = format(dateRange.startDate, 'yyyy-MM')
+        return `Parking_Report_Monthly_${monthYear}.${exportFormat}`
 
       case 'custom':
-        return `Parking_Report_Custom_${startDate}_${endDate}.${format}`
+        return `Parking_Report_Custom_${startDate}_${endDate}.${exportFormat}`
 
       default:
-        return `Parking_Report_${startDate}_${endDate}.${format}`
+        return `Parking_Report_${startDate}_${endDate}.${exportFormat}`
     }
   }
 
@@ -195,15 +184,15 @@ class ReportExportService {
     yPosition += 15
 
     const summaryData = [
-      ['Total Sessions', data.totalSessions.toString()],
-      ['Active Sessions', data.activeSessions.toString()],
-      ['Completed Sessions', data.completedSessions.toString()],
-      ['Revenue', `$${data.revenue.toFixed(2)}`],
-      ['Expenses', `$${data.expenses.toFixed(2)}`],
-      ['Net Income', `$${data.netIncome.toFixed(2)}`]
+      ['Total Sessions', (data.totalSessions ?? 0).toString()],
+      ['Active Sessions', (data.activeSessions ?? 0).toString()],
+      ['Completed Sessions', (data.completedSessions ?? 0).toString()],
+      ['Revenue', `$${(data.revenue ?? 0).toFixed(2)}`],
+      ['Expenses', `$${(data.expenses ?? 0).toFixed(2)}`],
+      ['Net Income', `$${(data.netIncome ?? 0).toFixed(2)}`]
     ]
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPosition,
       head: [['Metric', 'Value']],
       body: summaryData,
@@ -211,10 +200,10 @@ class ReportExportService {
       styles: { fontSize: 10 }
     })
 
-    yPosition = doc.lastAutoTable.finalY + 20
+    yPosition = (doc as ExtendedJsPDF).lastAutoTable!.finalY + 20
 
     // Hourly breakdown if enabled
-    if (config.includeHourlyBreakdown && data.hourlyBreakdown.length > 0) {
+    if (config.includeHourlyBreakdown && data.hourlyBreakdown?.length > 0) {
       if (yPosition > 200) {
         doc.addPage()
         yPosition = 20
@@ -226,14 +215,14 @@ class ReportExportService {
       yPosition += 15
 
       const hourlyData = data.hourlyBreakdown.map(hour => [
-        `${hour.hour}:00`,
-        hour.entries.toString(),
-        hour.exits.toString(),
-        `$${hour.revenue.toFixed(2)}`,
-        hour.occupancy.toString()
+        `${hour?.hour ?? 0}:00`,
+        (hour?.entries ?? 0).toString(),
+        (hour?.exits ?? 0).toString(),
+        `$${(hour?.revenue ?? 0).toFixed(2)}`,
+        (hour?.occupancy ?? 0).toString()
       ])
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Hour', 'Entries', 'Exits', 'Revenue', 'Occupancy']],
         body: hourlyData,
@@ -241,11 +230,11 @@ class ReportExportService {
         styles: { fontSize: 8 }
       })
 
-      yPosition = doc.lastAutoTable.finalY + 20
+      yPosition = (doc as ExtendedJsPDF).lastAutoTable!.finalY + 20
     }
 
     // Vehicle type breakdown
-    if (data.vehicleTypeBreakdown.length > 0) {
+    if (data.vehicleTypeBreakdown?.length > 0) {
       if (yPosition > 200) {
         doc.addPage()
         yPosition = 20
@@ -257,14 +246,14 @@ class ReportExportService {
       yPosition += 15
 
       const vehicleData = data.vehicleTypeBreakdown.map(type => [
-        type.vehicleType,
-        type.count.toString(),
-        `${type.percentage.toFixed(1)}%`,
-        `$${type.revenue.toFixed(2)}`,
-        `${type.averageStayDuration.toFixed(1)}h`
+        type?.vehicleType ?? 'Unknown',
+        (type?.count ?? 0).toString(),
+        `${(type?.percentage ?? 0).toFixed(1)}%`,
+        `$${(type?.revenue ?? 0).toFixed(2)}`,
+        `${(type?.averageStayDuration ?? 0).toFixed(1)}h`
       ])
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Vehicle Type', 'Count', 'Percentage', 'Revenue', 'Avg Stay']],
         body: vehicleData,
@@ -272,7 +261,7 @@ class ReportExportService {
         styles: { fontSize: 10 }
       })
 
-      yPosition = doc.lastAutoTable.finalY + 20
+      yPosition = (doc as ExtendedJsPDF).lastAutoTable!.finalY + 20
     }
 
     return yPosition
@@ -291,16 +280,16 @@ class ReportExportService {
     yPosition += 15
 
     const summaryData = [
-      ['Total Sessions', data.weeklyTotals.totalSessions.toString()],
-      ['Total Revenue', `$${data.weeklyTotals.totalRevenue.toFixed(2)}`],
-      ['Total Expenses', `$${data.weeklyTotals.totalExpenses.toFixed(2)}`],
-      ['Net Income', `$${data.weeklyTotals.netIncome.toFixed(2)}`],
-      ['Average Occupancy', `${data.weeklyTotals.averageOccupancy.toFixed(1)}%`],
-      ['Avg Sessions/Day', data.weeklyAverages.avgSessionsPerDay.toFixed(1)],
-      ['Avg Revenue/Day', `$${data.weeklyAverages.avgRevenuePerDay.toFixed(2)}`]
+      ['Total Sessions', (data.weeklyTotals?.totalSessions ?? 0).toString()],
+      ['Total Revenue', `$${(data.weeklyTotals?.totalRevenue ?? 0).toFixed(2)}`],
+      ['Total Expenses', `$${(data.weeklyTotals?.totalExpenses ?? 0).toFixed(2)}`],
+      ['Net Income', `$${(data.weeklyTotals?.netIncome ?? 0).toFixed(2)}`],
+      ['Average Occupancy', `${(data.weeklyTotals?.averageOccupancy ?? 0).toFixed(1)}%`],
+      ['Avg Sessions/Day', (data.weeklyAverages?.avgSessionsPerDay ?? 0).toFixed(1)],
+      ['Avg Revenue/Day', `$${(data.weeklyAverages?.avgRevenuePerDay ?? 0).toFixed(2)}`]
     ]
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPosition,
       head: [['Metric', 'Value']],
       body: summaryData,
@@ -308,10 +297,10 @@ class ReportExportService {
       styles: { fontSize: 10 }
     })
 
-    yPosition = doc.lastAutoTable.finalY + 20
+    yPosition = (doc as ExtendedJsPDF).lastAutoTable!.finalY + 20
 
     // Daily breakdown if enabled
-    if (config.includeDailyBreakdown && data.dailyBreakdown.length > 0) {
+    if (config.includeDailyBreakdown && data.dailyBreakdown?.length > 0) {
       if (yPosition > 180) {
         doc.addPage()
         yPosition = 20
@@ -323,15 +312,15 @@ class ReportExportService {
       yPosition += 15
 
       const dailyData = data.dailyBreakdown.map(day => [
-        format(new Date(day.date), 'EEE, MMM d'),
-        day.totalSessions.toString(),
-        day.activeSessions.toString(),
-        day.completedSessions.toString(),
-        `$${day.revenue.toFixed(2)}`,
-        `$${day.netIncome.toFixed(2)}`
+        format(new Date(day?.date ?? new Date()), 'EEE, MMM d'),
+        (day?.totalSessions ?? 0).toString(),
+        (day?.activeSessions ?? 0).toString(),
+        (day?.completedSessions ?? 0).toString(),
+        `$${(day?.revenue ?? 0).toFixed(2)}`,
+        `$${(day?.netIncome ?? 0).toFixed(2)}`
       ])
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Date', 'Total', 'Active', 'Completed', 'Revenue', 'Net Income']],
         body: dailyData,
@@ -339,7 +328,7 @@ class ReportExportService {
         styles: { fontSize: 8 }
       })
 
-      yPosition = doc.lastAutoTable.finalY + 20
+      yPosition = (doc as ExtendedJsPDF).lastAutoTable!.finalY + 20
     }
 
     return yPosition
@@ -358,14 +347,14 @@ class ReportExportService {
     yPosition += 15
 
     const summaryData = [
-      ['Total Sessions', data.monthlyTotals.totalSessions.toString()],
-      ['Total Revenue', `$${data.monthlyTotals.totalRevenue.toFixed(2)}`],
-      ['Total Expenses', `$${data.monthlyTotals.totalExpenses.toFixed(2)}`],
-      ['Net Income', `$${data.monthlyTotals.netIncome.toFixed(2)}`],
-      ['Working Days', data.monthlyTotals.totalWorkingDays.toString()]
+      ['Total Sessions', (data.monthlyTotals?.totalSessions ?? 0).toString()],
+      ['Total Revenue', `$${(data.monthlyTotals?.totalRevenue ?? 0).toFixed(2)}`],
+      ['Total Expenses', `$${(data.monthlyTotals?.totalExpenses ?? 0).toFixed(2)}`],
+      ['Net Income', `$${(data.monthlyTotals?.netIncome ?? 0).toFixed(2)}`],
+      ['Working Days', (data.monthlyTotals?.totalWorkingDays ?? 0).toString()]
     ]
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPosition,
       head: [['Metric', 'Value']],
       body: summaryData,
@@ -373,10 +362,10 @@ class ReportExportService {
       styles: { fontSize: 10 }
     })
 
-    yPosition = doc.lastAutoTable.finalY + 20
+    yPosition = (doc as ExtendedJsPDF).lastAutoTable!.finalY + 20
 
     // Best performing days
-    if (data.bestPerformingDays.length > 0) {
+    if (data.bestPerformingDays?.length > 0) {
       if (yPosition > 200) {
         doc.addPage()
         yPosition = 20
@@ -388,13 +377,13 @@ class ReportExportService {
       yPosition += 15
 
       const bestDaysData = data.bestPerformingDays.map(day => [
-        format(new Date(day.date), 'MMMM d, yyyy'),
-        day.sessions.toString(),
-        `$${day.revenue.toFixed(2)}`,
-        `${day.occupancyRate.toFixed(1)}%`
+        format(new Date(day?.date ?? new Date()), 'MMMM d, yyyy'),
+        (day?.sessions ?? 0).toString(),
+        `$${(day?.revenue ?? 0).toFixed(2)}`,
+        `${(day?.occupancyRate ?? 0).toFixed(1)}%`
       ])
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Date', 'Sessions', 'Revenue', 'Occupancy']],
         body: bestDaysData,
@@ -402,7 +391,7 @@ class ReportExportService {
         styles: { fontSize: 10 }
       })
 
-      yPosition = doc.lastAutoTable.finalY + 20
+      yPosition = (doc as ExtendedJsPDF).lastAutoTable!.finalY + 20
     }
 
     return yPosition
@@ -421,17 +410,17 @@ class ReportExportService {
     yPosition += 15
 
     const summaryData = [
-      ['Total Days', data.totalDays.toString()],
-      ['Total Sessions', data.summary.totalSessions.toString()],
-      ['Total Revenue', `$${data.summary.totalRevenue.toFixed(2)}`],
-      ['Net Income', `$${data.summary.netIncome.toFixed(2)}`],
-      ['Avg Stay Duration', `${data.summary.averageStayDuration.toFixed(1)}h`],
-      ['Avg Revenue/Session', `$${data.summary.averageRevenuePerSession.toFixed(2)}`],
-      ['Top Vehicle Type', data.summary.topVehicleType],
-      ['Top Payment Method', data.summary.topPaymentMethod]
+      ['Total Days', (data.totalDays ?? 0).toString()],
+      ['Total Sessions', (data.summary?.totalSessions ?? 0).toString()],
+      ['Total Revenue', `$${(data.summary?.totalRevenue ?? 0).toFixed(2)}`],
+      ['Net Income', `$${(data.summary?.netIncome ?? 0).toFixed(2)}`],
+      ['Avg Stay Duration', `${(data.summary?.averageStayDuration ?? 0).toFixed(1)}h`],
+      ['Avg Revenue/Session', `$${(data.summary?.averageRevenuePerSession ?? 0).toFixed(2)}`],
+      ['Top Vehicle Type', data.summary?.topVehicleType ?? 'N/A'],
+      ['Top Payment Method', data.summary?.topPaymentMethod ?? 'N/A']
     ]
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPosition,
       head: [['Metric', 'Value']],
       body: summaryData,
@@ -439,7 +428,7 @@ class ReportExportService {
       styles: { fontSize: 10 }
     })
 
-    yPosition = doc.lastAutoTable.finalY + 20
+    yPosition = (doc as ExtendedJsPDF).lastAutoTable!.finalY + 20
 
     return yPosition
   }
@@ -508,7 +497,7 @@ class ReportExportService {
 
   private addDailyExcelSheets(workbook: XLSX.WorkBook, data: DailyReportContent, config: ExportConfig) {
     // Hourly breakdown sheet
-    if (config.includeHourlyBreakdown && data.hourlyBreakdown.length > 0) {
+    if (config.includeHourlyBreakdown && data.hourlyBreakdown?.length > 0) {
       const hourlyData = [
         ['Hour', 'Entries', 'Exits', 'Revenue', 'Occupancy'],
         ...data.hourlyBreakdown.map(hour => [
@@ -524,7 +513,7 @@ class ReportExportService {
     }
 
     // Vehicle type breakdown
-    if (data.vehicleTypeBreakdown.length > 0) {
+    if (data.vehicleTypeBreakdown?.length > 0) {
       const vehicleData = [
         ['Vehicle Type', 'Count', 'Percentage', 'Revenue', 'Avg Stay Duration'],
         ...data.vehicleTypeBreakdown.map(type => [
@@ -540,7 +529,7 @@ class ReportExportService {
     }
 
     // Payment method breakdown
-    if (data.paymentMethodBreakdown.length > 0) {
+    if (data.paymentMethodBreakdown?.length > 0) {
       const paymentData = [
         ['Payment Method', 'Count', 'Amount', 'Percentage'],
         ...data.paymentMethodBreakdown.map(method => [
@@ -557,7 +546,7 @@ class ReportExportService {
 
   private addWeeklyExcelSheets(workbook: XLSX.WorkBook, data: WeeklyReportContent, config: ExportConfig) {
     // Daily breakdown sheet
-    if (config.includeDailyBreakdown && data.dailyBreakdown.length > 0) {
+    if (config.includeDailyBreakdown && data.dailyBreakdown?.length > 0) {
       const dailyData = [
         ['Date', 'Total Sessions', 'Active Sessions', 'Completed Sessions', 'Revenue', 'Expenses', 'Net Income'],
         ...data.dailyBreakdown.map(day => [
@@ -597,7 +586,7 @@ class ReportExportService {
 
   private addMonthlyExcelSheets(workbook: XLSX.WorkBook, data: MonthlyReportContent, config: ExportConfig) {
     // Weekly breakdown sheet
-    if (config.includeWeeklyBreakdown && data.weeklyBreakdown.length > 0) {
+    if (config.includeWeeklyBreakdown && data.weeklyBreakdown?.length > 0) {
       const weeklyData = [
         ['Week Start', 'Week End', 'Total Sessions', 'Total Revenue', 'Net Income'],
         ...data.weeklyBreakdown.map(week => [
@@ -613,7 +602,7 @@ class ReportExportService {
     }
 
     // Best/worst performing days
-    if (data.bestPerformingDays.length > 0) {
+    if (data.bestPerformingDays?.length > 0) {
       const performanceData = [
         ['Best Performing Days'],
         ['Date', 'Sessions', 'Revenue', 'Occupancy Rate'],
@@ -711,30 +700,30 @@ class ReportExportService {
     // Summary
     content += `Daily Summary\n`
     content += `Metric,Value\n`
-    content += `Total Sessions,${data.totalSessions}\n`
-    content += `Active Sessions,${data.activeSessions}\n`
-    content += `Completed Sessions,${data.completedSessions}\n`
-    content += `Revenue,$${data.revenue.toFixed(2)}\n`
-    content += `Expenses,$${data.expenses.toFixed(2)}\n`
-    content += `Net Income,$${data.netIncome.toFixed(2)}\n`
+    content += `Total Sessions,${data.totalSessions ?? 0}\n`
+    content += `Active Sessions,${data.activeSessions ?? 0}\n`
+    content += `Completed Sessions,${data.completedSessions ?? 0}\n`
+    content += `Revenue,$${(data.revenue ?? 0).toFixed(2)}\n`
+    content += `Expenses,$${(data.expenses ?? 0).toFixed(2)}\n`
+    content += `Net Income,$${(data.netIncome ?? 0).toFixed(2)}\n`
     content += `\n`
 
     // Hourly breakdown
-    if (config.includeHourlyBreakdown && data.hourlyBreakdown.length > 0) {
+    if (config.includeHourlyBreakdown && data.hourlyBreakdown?.length > 0) {
       content += `Hourly Breakdown\n`
       content += `Hour,Entries,Exits,Revenue,Occupancy\n`
       data.hourlyBreakdown.forEach(hour => {
-        content += `${hour.hour}:00,${hour.entries},${hour.exits},$${hour.revenue.toFixed(2)},${hour.occupancy}\n`
+        content += `${hour?.hour ?? 0}:00,${hour?.entries ?? 0},${hour?.exits ?? 0},$${(hour?.revenue ?? 0).toFixed(2)},${hour?.occupancy ?? 0}\n`
       })
       content += `\n`
     }
 
     // Vehicle type breakdown
-    if (data.vehicleTypeBreakdown.length > 0) {
+    if (data.vehicleTypeBreakdown?.length > 0) {
       content += `Vehicle Type Breakdown\n`
       content += `Vehicle Type,Count,Percentage,Revenue,Avg Stay Duration\n`
       data.vehicleTypeBreakdown.forEach(type => {
-        content += `${type.vehicleType},${type.count},${type.percentage.toFixed(1)}%,$${type.revenue.toFixed(2)},${type.averageStayDuration.toFixed(1)}h\n`
+        content += `${type?.vehicleType ?? 'Unknown'},${type?.count ?? 0},${(type?.percentage ?? 0).toFixed(1)}%,$${(type?.revenue ?? 0).toFixed(2)},${(type?.averageStayDuration ?? 0).toFixed(1)}h\n`
       })
       content += `\n`
     }
@@ -748,19 +737,19 @@ class ReportExportService {
     // Weekly summary
     content += `Weekly Summary\n`
     content += `Metric,Value\n`
-    content += `Total Sessions,${data.weeklyTotals.totalSessions}\n`
-    content += `Total Revenue,$${data.weeklyTotals.totalRevenue.toFixed(2)}\n`
-    content += `Total Expenses,$${data.weeklyTotals.totalExpenses.toFixed(2)}\n`
-    content += `Net Income,$${data.weeklyTotals.netIncome.toFixed(2)}\n`
-    content += `Average Occupancy,${data.weeklyTotals.averageOccupancy.toFixed(1)}%\n`
+    content += `Total Sessions,${data.weeklyTotals?.totalSessions ?? 0}\n`
+    content += `Total Revenue,$${(data.weeklyTotals?.totalRevenue ?? 0).toFixed(2)}\n`
+    content += `Total Expenses,$${(data.weeklyTotals?.totalExpenses ?? 0).toFixed(2)}\n`
+    content += `Net Income,$${(data.weeklyTotals?.netIncome ?? 0).toFixed(2)}\n`
+    content += `Average Occupancy,${(data.weeklyTotals?.averageOccupancy ?? 0).toFixed(1)}%\n`
     content += `\n`
 
     // Daily breakdown
-    if (config.includeDailyBreakdown && data.dailyBreakdown.length > 0) {
+    if (config.includeDailyBreakdown && data.dailyBreakdown?.length > 0) {
       content += `Daily Breakdown\n`
       content += `Date,Total Sessions,Active Sessions,Completed Sessions,Revenue,Expenses,Net Income\n`
       data.dailyBreakdown.forEach(day => {
-        content += `${day.date},${day.totalSessions},${day.activeSessions},${day.completedSessions},$${day.revenue.toFixed(2)},$${day.expenses.toFixed(2)},$${day.netIncome.toFixed(2)}\n`
+        content += `${day?.date ?? ''},${day?.totalSessions ?? 0},${day?.activeSessions ?? 0},${day?.completedSessions ?? 0},$${(day?.revenue ?? 0).toFixed(2)},$${(day?.expenses ?? 0).toFixed(2)},$${(day?.netIncome ?? 0).toFixed(2)}\n`
       })
       content += `\n`
     }
@@ -774,19 +763,19 @@ class ReportExportService {
     // Monthly summary
     content += `Monthly Summary\n`
     content += `Metric,Value\n`
-    content += `Total Sessions,${data.monthlyTotals.totalSessions}\n`
-    content += `Total Revenue,$${data.monthlyTotals.totalRevenue.toFixed(2)}\n`
-    content += `Total Expenses,$${data.monthlyTotals.totalExpenses.toFixed(2)}\n`
-    content += `Net Income,$${data.monthlyTotals.netIncome.toFixed(2)}\n`
-    content += `Working Days,${data.monthlyTotals.totalWorkingDays}\n`
+    content += `Total Sessions,${data.monthlyTotals?.totalSessions ?? 0}\n`
+    content += `Total Revenue,$${(data.monthlyTotals?.totalRevenue ?? 0).toFixed(2)}\n`
+    content += `Total Expenses,$${(data.monthlyTotals?.totalExpenses ?? 0).toFixed(2)}\n`
+    content += `Net Income,$${(data.monthlyTotals?.netIncome ?? 0).toFixed(2)}\n`
+    content += `Working Days,${data.monthlyTotals?.totalWorkingDays ?? 0}\n`
     content += `\n`
 
     // Best performing days
-    if (data.bestPerformingDays.length > 0) {
+    if (data.bestPerformingDays?.length > 0) {
       content += `Best Performing Days\n`
       content += `Date,Sessions,Revenue,Occupancy Rate\n`
       data.bestPerformingDays.forEach(day => {
-        content += `${day.date},${day.sessions},$${day.revenue.toFixed(2)},${day.occupancyRate.toFixed(1)}%\n`
+        content += `${day?.date ?? ''},${day?.sessions ?? 0},$${(day?.revenue ?? 0).toFixed(2)},${(day?.occupancyRate ?? 0).toFixed(1)}%\n`
       })
       content += `\n`
     }
@@ -800,15 +789,15 @@ class ReportExportService {
     // Summary
     content += `Custom Report Summary\n`
     content += `Metric,Value\n`
-    content += `Period,${data.startDate} to ${data.endDate}\n`
-    content += `Total Days,${data.totalDays}\n`
-    content += `Total Sessions,${data.summary.totalSessions}\n`
-    content += `Total Revenue,$${data.summary.totalRevenue.toFixed(2)}\n`
-    content += `Net Income,$${data.summary.netIncome.toFixed(2)}\n`
-    content += `Average Stay Duration,${data.summary.averageStayDuration.toFixed(1)}h\n`
-    content += `Average Revenue per Session,$${data.summary.averageRevenuePerSession.toFixed(2)}\n`
-    content += `Top Vehicle Type,${data.summary.topVehicleType}\n`
-    content += `Top Payment Method,${data.summary.topPaymentMethod}\n`
+    content += `Period,${data.startDate ?? ''} to ${data.endDate ?? ''}\n`
+    content += `Total Days,${data.totalDays ?? 0}\n`
+    content += `Total Sessions,${data.summary?.totalSessions ?? 0}\n`
+    content += `Total Revenue,$${(data.summary?.totalRevenue ?? 0).toFixed(2)}\n`
+    content += `Net Income,$${(data.summary?.netIncome ?? 0).toFixed(2)}\n`
+    content += `Average Stay Duration,${(data.summary?.averageStayDuration ?? 0).toFixed(1)}h\n`
+    content += `Average Revenue per Session,$${(data.summary?.averageRevenuePerSession ?? 0).toFixed(2)}\n`
+    content += `Top Vehicle Type,${data.summary?.topVehicleType ?? 'N/A'}\n`
+    content += `Top Payment Method,${data.summary?.topPaymentMethod ?? 'N/A'}\n`
 
     return content
   }
