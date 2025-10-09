@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { StatisticsChart } from './StatisticsChart'
 import { Card, CardHeader, CardContent } from '../ui'
-import { Badge } from '../ui/Badge'
+import { Badge } from '../ui/badge'
 import { Select } from '../ui'
 import { formatCurrency, getRevenueAmount } from '../../utils/helpers'
 import { useUserRole } from '../../hooks/useUserRole'

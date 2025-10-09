@@ -1,5 +1,5 @@
 import React from 'react'
-import { Badge } from '../ui/Badge'
+import { Badge } from '../ui/badge'
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates'
 import { formatDateTime } from '../../utils/helpers'
 

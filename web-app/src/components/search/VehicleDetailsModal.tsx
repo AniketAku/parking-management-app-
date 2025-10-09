@@ -1,6 +1,6 @@
 import React from 'react'
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../ui/Modal'
-import { Badge, StatusBadge } from '../ui/Badge'
+import { Badge, StatusBadge } from '../ui/badge'
 import {
   formatDateTime,
   formatCurrency,
