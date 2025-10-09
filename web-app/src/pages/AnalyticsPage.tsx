@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '../components/ui'
 import { Button } from '../components/ui/Button'
-import { Badge } from '../components/ui/Badge'
+import { Badge } from '../components/ui/badge'
 import { Select } from '../components/ui'
 import {
   RevenueAnalytics,
