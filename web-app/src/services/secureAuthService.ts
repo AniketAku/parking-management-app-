@@ -126,14 +126,10 @@ class SecureAuthService {
         expiresAt: new Date(Date.now() + this.TOKEN_EXPIRY),
       }
 
-      // Update last login
-      await supabase
-        .from('users')
-        .update({ 
-          last_login: new Date().toISOString(),
-          login_count: (userProfile.login_count || 0) + 1
-        })
-        .eq('id', userProfile.id)
+      // Update last login using RPC to bypass RLS
+      await supabase.rpc('update_last_login', {
+        user_id: userProfile.id
+      })
 
       // Clear failed attempts on successful login
       this.loginAttempts.delete(clientId)

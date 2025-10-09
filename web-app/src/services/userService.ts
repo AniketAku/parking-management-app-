@@ -22,48 +22,34 @@ export interface UserProfile {
 export class UserService {
   /**
    * Register a new user (requires admin approval) - Phone-based registration without Supabase Auth
+   * Uses RPC function to bypass RLS for public registration
    */
   static async registerUser(userData: UserRegistration): Promise<{ success: boolean; message: string }> {
     try {
-      // Check if username already exists
-      const { data: existingUser, error: checkError } = await supabase
-        .from('users')
-        .select('username')
-        .eq('username', userData.username)
-        .single()
-
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found
-        throw new Error(`Failed to check existing user: ${checkError.message}`)
-      }
-
-      if (existingUser) {
-        throw new Error('Username already exists')
-      }
-
       // Hash password before storing (in a real app, use bcrypt or similar)
       const hashedPassword = await this.hashPassword(userData.password)
 
-      // Create user profile in our users table (pending approval)
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-          username: userData.username,
-          password_hash: hashedPassword,
-          role: 'operator', // Default role
-          full_name: userData.fullName,
-          phone: userData.phone,
-          is_approved: false, // Requires admin approval
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+      // Use RPC function to bypass RLS and create user
+      const { data, error } = await supabase
+        .rpc('register_public_user', {
+          p_username: userData.username,
+          p_password_hash: hashedPassword,
+          p_full_name: userData.fullName,
+          p_phone: userData.phone
         })
 
-      if (profileError) {
-        throw new Error(`Failed to create user profile: ${profileError.message}`)
+      if (error) {
+        throw new Error(`Registration failed: ${error.message}`)
       }
 
+      if (!data) {
+        throw new Error('No response from registration service')
+      }
+
+      // The RPC function returns JSON with success status
       return {
-        success: true,
-        message: 'Account created successfully! Please wait for admin approval before logging in.'
+        success: data.success || false,
+        message: data.message || 'Registration completed'
       }
     } catch (error) {
       console.error('Registration error:', error)
@@ -133,15 +119,20 @@ export class UserService {
   }
 
   /**
-   * Get all pending users (for admin approval)
+   * Get all pending users (for admin approval) - Uses RPC to bypass RLS
    */
   static async getPendingUsers(): Promise<UserProfile[]> {
     try {
+      // Get current user ID from auth storage
+      const userId = this.getCurrentUserId()
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
       const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('is_approved', false)
-        .order('created_at', { ascending: false })
+        .rpc('get_pending_users', {
+          requesting_user_id: userId
+        })
 
       if (error) {
         throw new Error(`Failed to get pending users: ${error.message}`)
@@ -155,15 +146,20 @@ export class UserService {
   }
 
   /**
-   * Get all approved/active users
+   * Get all approved/active users - Uses RPC to bypass RLS
    */
   static async getApprovedUsers(): Promise<UserProfile[]> {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('is_approved', true)
-        .order('created_at', { ascending: false })
+      // Get current user ID from auth storage
+      const userId = this.getCurrentUserId()
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
+      const { data, error} = await supabase
+        .rpc('get_approved_users', {
+          requesting_user_id: userId
+        })
 
       if (error) {
         throw new Error(`Failed to get approved users: ${error.message}`)
@@ -173,6 +169,22 @@ export class UserService {
     } catch (error) {
       console.error('Error getting approved users:', error)
       return []
+    }
+  }
+
+  /**
+   * Get current user ID from auth storage
+   */
+  private static getCurrentUserId(): string | null {
+    try {
+      const storedAuth = localStorage.getItem('secure-auth-storage')
+      if (!storedAuth) return null
+
+      const decoded = JSON.parse(atob(storedAuth))
+      return decoded.state?.user?.id || null
+    } catch (error) {
+      console.error('Failed to get current user ID:', error)
+      return null
     }
   }
 

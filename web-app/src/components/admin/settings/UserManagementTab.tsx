@@ -3,7 +3,7 @@
  * Manages user roles, permissions, authentication, and user administration
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   UserGroupIcon,
   ShieldCheckIcon,
@@ -12,10 +12,15 @@ import {
   UsersIcon,
   LockClosedIcon,
   EyeSlashIcon,
-  CheckBadgeIcon
+  CheckBadgeIcon,
+  PlusIcon,
+  CheckIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { SettingsSection } from './SettingsSection'
 import { SettingsField } from './SettingsField'
+import { CreateUserModal } from './CreateUserModal'
+import { UserService, type UserProfile } from '../../../services/userService'
 import type { UserManagementSettings } from '../../../types/settings'
 
 interface UserManagementTabProps {
@@ -37,6 +42,10 @@ export function UserManagementTab({
   })
 
   const [loading, setLoading] = useState(false)
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false)
+  const [pendingUsers, setPendingUsers] = useState<UserProfile[]>([])
+  const [activeUsers, setActiveUsers] = useState<UserProfile[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(true)
 
   const handleChange = useCallback((key: keyof UserManagementSettings, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }))
@@ -75,6 +84,72 @@ export function UserManagementTab({
     handleRoleChange(settings.user_roles.filter(role => role !== roleToRemove))
   }, [settings.user_roles, handleRoleChange])
 
+  // Load users on mount
+  useEffect(() => {
+    loadUsers()
+  }, [])
+
+  const loadUsers = async () => {
+    setLoadingUsers(true)
+    try {
+      const [pending, active] = await Promise.all([
+        UserService.getPendingUsers(),
+        UserService.getApprovedUsers()
+      ])
+      setPendingUsers(pending)
+      setActiveUsers(active)
+    } catch (error) {
+      console.error('Failed to load users:', error)
+    } finally {
+      setLoadingUsers(false)
+    }
+  }
+
+  const handleApproveUser = async (userId: string) => {
+    try {
+      const result = await UserService.approveUser(userId)
+      if (result.success) {
+        await loadUsers() // Reload user lists
+      } else {
+        alert(result.message)
+      }
+    } catch (error) {
+      console.error('Failed to approve user:', error)
+      alert('Failed to approve user')
+    }
+  }
+
+  const handleRejectUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to reject this user? This action cannot be undone.')) {
+      return
+    }
+    try {
+      const result = await UserService.rejectUser(userId)
+      if (result.success) {
+        await loadUsers() // Reload user lists
+      } else {
+        alert(result.message)
+      }
+    } catch (error) {
+      console.error('Failed to reject user:', error)
+      alert('Failed to reject user')
+    }
+  }
+
+  const handleUpdateRole = async (userId: string, newRole: 'admin' | 'operator' | 'viewer') => {
+    try {
+      const result = await UserService.updateUserRole(userId, newRole)
+      if (result.success) {
+        await loadUsers() // Reload user lists
+      } else {
+        alert(result.message)
+      }
+    } catch (error) {
+      console.error('Failed to update user role:', error)
+      alert('Failed to update user role')
+    }
+  }
+
   return (
     <div className={`space-y-8 ${className}`}>
       {/* User Roles Management */}
@@ -84,6 +159,121 @@ export function UserManagementTab({
         icon={UserGroupIcon}
       >
         <div className="space-y-6">
+          {/* Create User Button */}
+          <div className="flex justify-between items-center mb-4">
+            <label className="block text-sm font-medium text-gray-700">
+              User Management
+            </label>
+            <button
+              onClick={() => setIsCreateUserModalOpen(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Create User
+            </button>
+          </div>
+
+          {/* User Lists */}
+          <div className="mt-6 space-y-6">
+            {/* Pending Users */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-900">Pending Approval ({pendingUsers.length})</h3>
+                <ClockIcon className="h-5 w-5 text-yellow-500" />
+              </div>
+              {loadingUsers ? (
+                <div className="text-center py-4 text-gray-500">Loading...</div>
+              ) : pendingUsers.length === 0 ? (
+                <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-md">
+                  No pending approvals
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {pendingUsers.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-medium text-gray-900">{user.username}</span>
+                          <span className="text-sm text-gray-600">{user.full_name}</span>
+                          <span className="text-sm text-gray-500">{user.phone}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Role: <span className="capitalize">{user.role}</span> •
+                          Registered: {new Date(user.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleApproveUser(user.id)}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                          title="Approve User"
+                        >
+                          <CheckIcon className="h-4 w-4 mr-1" />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleRejectUser(user.id)}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                          title="Reject User"
+                        >
+                          <XMarkIcon className="h-4 w-4 mr-1" />
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Active Users */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-900">Active Users ({activeUsers.length})</h3>
+                <UsersIcon className="h-5 w-5 text-green-500" />
+              </div>
+              {loadingUsers ? (
+                <div className="text-center py-4 text-gray-500">Loading...</div>
+              ) : activeUsers.length === 0 ? (
+                <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-md">
+                  No active users
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {activeUsers.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-md">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-medium text-gray-900">{user.username}</span>
+                          <span className="text-sm text-gray-600">{user.full_name}</span>
+                          <span className="text-sm text-gray-500">{user.phone}</span>
+                          {user.role === 'admin' && (
+                            <CheckBadgeIcon className="h-4 w-4 text-blue-500" title="Admin" />
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Role: <span className="capitalize">{user.role}</span> •
+                          Last Login: {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleUpdateRole(user.id, e.target.value as 'admin' | 'operator' | 'viewer')}
+                          className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="operator">Operator</option>
+                          <option value="viewer">Viewer</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Available User Roles
@@ -251,6 +441,16 @@ export function UserManagementTab({
           {loading ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
+
+      {/* Create User Modal */}
+      <CreateUserModal
+        isOpen={isCreateUserModalOpen}
+        onClose={() => setIsCreateUserModalOpen(false)}
+        onSuccess={() => {
+          setIsCreateUserModalOpen(false)
+          loadUsers() // Reload user lists after creating new user
+        }}
+      />
     </div>
   )
 }

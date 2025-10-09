@@ -12,7 +12,11 @@ interface LoginFormData {
   rememberMe: boolean
 }
 
-export function SecureLoginForm() {
+interface SecureLoginFormProps {
+  onSwitchToRegister?: () => void
+}
+
+export function SecureLoginForm({ onSwitchToRegister }: SecureLoginFormProps = {}) {
   const { login, isLoading, error, clearError } = useSecureAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitResult | null>(null)
@@ -355,6 +359,22 @@ export function SecureLoginForm() {
                 <p>🔍 CSRF Token: {securityService.getCSRFToken().token.substring(0, 8)}...</p>
                 <p>📱 Device ID: {securityService.getDeviceFingerprint().substring(0, 8)}...</p>
               </div>
+            </div>
+          )}
+
+          {/* Create Account Link */}
+          {onSwitchToRegister && (
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  onClick={onSwitchToRegister}
+                  className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                >
+                  Create one here
+                </button>
+              </p>
             </div>
           )}
         </form>
