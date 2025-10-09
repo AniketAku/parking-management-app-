@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { Badge } from '../ui/badge'
-import { Button } from '../ui/button'
+import { Button } from '../ui/Button'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
 import { Progress } from '../ui/progress'
 import { 
