@@ -5,18 +5,22 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useShiftLinking } from '../hooks/useShiftLinking'
+import { useShiftData } from '../hooks/useShiftData'
 import { ConnectionStatus } from '../components/common/ConnectionStatus'
 import type { ShiftSession, ShiftStatistics } from '../types/database'
+import { log } from '../utils/secureLogger'
 
 // Tab Components (to be implemented)
 import { ShiftOverviewTab } from '../components/shift/ShiftOverviewTab'
 import { ShiftOperationsTab } from '../components/shift/ShiftOperationsTab'
+import { ExpenseTab } from '../components/shift/ExpenseTab'
+import { DepositsTab } from '../components/shift/DepositsTab'
 import { ShiftReportsTab } from '../components/shift/ShiftReportsTab'
 import { ShiftHistoryTab } from '../components/shift/ShiftHistoryTab'
 import { ShiftSettingsTab } from '../components/shift/ShiftSettingsTab'
 
 // Types for tab management
-type ShiftTab = 'overview' | 'operations' | 'reports' | 'history' | 'settings'
+type ShiftTab = 'overview' | 'operations' | 'expenses' | 'deposits' | 'reports' | 'history' | 'settings'
 
 interface TabConfig {
   id: ShiftTab
@@ -40,6 +44,9 @@ export const ShiftManagementPage: React.FC = () => {
     clearErrors
   } = useShiftLinking()
 
+  // ✅ NEW: Centralized shift data hook (eliminates duplicate queries)
+  const shiftData = useShiftData(linkingState.activeShiftId)
+
   // Tab configuration
   const tabs: TabConfig[] = useMemo(() => [
     {
@@ -61,6 +68,26 @@ export const ShiftManagementPage: React.FC = () => {
         </svg>
       ),
       description: 'Start, end, and handover shift operations'
+    },
+    {
+      id: 'expenses',
+      label: 'Expenses',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+        </svg>
+      ),
+      description: 'Track shift expenses and manage costs'
+    },
+    {
+      id: 'deposits',
+      label: 'Deposits',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+      description: 'Daily deposits to owner with role-based access'
     },
     {
       id: 'reports',
@@ -95,7 +122,7 @@ export const ShiftManagementPage: React.FC = () => {
     }
   ], [])
 
-  // Initialize component
+  // ✅ FIX: Initialize component (fix race condition with empty dependency array)
   useEffect(() => {
     const initialize = async () => {
       try {
@@ -106,51 +133,96 @@ export const ShiftManagementPage: React.FC = () => {
         clearErrors()
         await refreshMetrics()
 
-        console.log('✅ Shift Management Page initialized successfully')
+        log.info('Shift Management Page initialized successfully')
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to initialize shift management'
         setError(errorMessage)
-        console.error('❌ Shift Management initialization error:', err)
+        log.error('Shift Management initialization error', err)
       } finally {
         setIsLoading(false)
       }
     }
 
     initialize()
-  }, [clearErrors, refreshMetrics])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // ✅ Empty array - only run once on mount
 
-  // Handle tab change
+  // ✅ FIX: Handle tab change (no arbitrary refresh needed - real-time subscriptions handle updates)
   const handleTabChange = useCallback((tabId: ShiftTab) => {
     setActiveTab(tabId)
+  }, [])
 
-    // Refresh data when switching to certain tabs
-    if (tabId === 'overview' || tabId === 'reports') {
-      refreshMetrics()
-    }
-  }, [refreshMetrics])
+  // ✅ NEW: Unified refresh handler
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      refreshMetrics(),
+      shiftData.refreshData()
+    ])
+  }, [refreshMetrics, shiftData])
 
-  // Render active tab content
+  // ✅ NEW: Render active tab content with clean props (no more duplicate data fetching)
   const renderTabContent = () => {
-    const commonProps = {
-      linkingState,
-      linkingMetrics,
-      onRefresh: refreshMetrics,
-      isLoading
-    }
-
     switch (activeTab) {
       case 'overview':
-        return <ShiftOverviewTab {...commonProps} />
+        return <ShiftOverviewTab
+          shiftData={shiftData}
+          linkingMetrics={linkingMetrics}
+          onRefresh={handleRefresh}
+          isLoading={isLoading || shiftData.loading}
+          onNavigateToReports={() => setActiveTab('reports')}
+          onNavigateToOperations={() => setActiveTab('operations')}
+          onNavigateToSettings={() => setActiveTab('settings')}
+        />
       case 'operations':
-        return <ShiftOperationsTab {...commonProps} />
+        return <ShiftOperationsTab
+          linkingState={linkingState}
+          linkingMetrics={linkingMetrics}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
+        />
+      case 'expenses':
+        return <ExpenseTab
+          shiftData={shiftData}
+          onRefresh={handleRefresh}
+          isLoading={isLoading || shiftData.loading}
+        />
+      case 'deposits':
+        return <DepositsTab
+          shiftData={shiftData}
+          onRefresh={handleRefresh}
+          isLoading={isLoading || shiftData.loading}
+        />
       case 'reports':
-        return <ShiftReportsTab {...commonProps} />
+        return <ShiftReportsTab
+          linkingState={linkingState}
+          linkingMetrics={linkingMetrics}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
+        />
       case 'history':
-        return <ShiftHistoryTab {...commonProps} />
+        return <ShiftHistoryTab
+          linkingState={linkingState}
+          linkingMetrics={linkingMetrics}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
+        />
       case 'settings':
-        return <ShiftSettingsTab {...commonProps} />
+        return <ShiftSettingsTab
+          linkingState={linkingState}
+          linkingMetrics={linkingMetrics}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
+        />
       default:
-        return <ShiftOverviewTab {...commonProps} />
+        return <ShiftOverviewTab
+          shiftData={shiftData}
+          linkingMetrics={linkingMetrics}
+          onRefresh={handleRefresh}
+          isLoading={isLoading || shiftData.loading}
+          onNavigateToReports={() => setActiveTab('reports')}
+          onNavigateToOperations={() => setActiveTab('operations')}
+          onNavigateToSettings={() => setActiveTab('settings')}
+        />
     }
   }
 
@@ -198,8 +270,8 @@ export const ShiftManagementPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Page Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      {/* Page Header - Mobile-friendly sticky (desktop only) */}
+      <div className="bg-white border-b border-gray-200 lg:sticky lg:top-0 lg:z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>

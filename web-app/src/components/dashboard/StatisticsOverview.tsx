@@ -15,7 +15,7 @@ export const StatisticsOverview: React.FC<StatisticsOverviewProps> = ({
   // Safety check - if statistics is undefined or null, show loading state
   if (!statistics || loading) {
     return (
-      <div className="sticky-stats space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Primary Stats Grid - Loading - Mobile-first responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           <ParkingStatsCard type="parked" value={0} loading={true} />
@@ -23,7 +23,7 @@ export const StatisticsOverview: React.FC<StatisticsOverviewProps> = ({
           <ParkingStatsCard type="income" value="₹0" loading={true} />
           <ParkingStatsCard type="unpaid" value={0} loading={true} />
         </div>
-        
+
         {/* Secondary Stats - Loading - Mobile-first responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4">
@@ -44,7 +44,7 @@ export const StatisticsOverview: React.FC<StatisticsOverviewProps> = ({
   }
 
   return (
-    <div className="sticky-stats space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Primary Stats Grid - Mobile-first responsive */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <ParkingStatsCard
@@ -52,19 +52,19 @@ export const StatisticsOverview: React.FC<StatisticsOverviewProps> = ({
           value={statistics.parkedVehicles || 0}
           loading={loading}
         />
-        
+
         <ParkingStatsCard
           type="exited"
           value={statistics.todayExits || 0}
           loading={loading}
         />
-        
+
         <ParkingStatsCard
           type="income"
           value={`₹${(statistics.todayIncome || 0).toLocaleString('en-IN')}`}
           loading={loading}
         />
-        
+
         <ParkingStatsCard
           type="unpaid"
           value={statistics.unpaidVehicles || 0}
