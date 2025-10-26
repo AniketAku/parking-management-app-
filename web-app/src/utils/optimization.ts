@@ -2,6 +2,7 @@
 // Collection of utilities for improving application performance
 
 import { lazy, ComponentType, LazyExoticComponent } from 'react'
+import { log } from './secureLogger'
 
 /**
  * Enhanced lazy loading with error boundaries and loading states
@@ -27,7 +28,7 @@ export function createLazyComponent<T extends ComponentType<any>>(
   // Preload if requested
   if (preload) {
     setTimeout(() => {
-      enhancedImportFn().catch(console.error)
+      enhancedImportFn().catch(error => log.error('Component preload failed', error))
     }, 100)
   }
 
@@ -92,7 +93,7 @@ export class ImageOptimizer {
     }
     tempImg.onerror = () => {
       img.classList.add('error')
-      console.error(`Failed to load image: ${src}`)
+      log.error('Image load failed', { src })
     }
     tempImg.src = src
   }
@@ -211,7 +212,7 @@ export class BundleOptimizer {
     try {
       return await importFn()
     } catch (error) {
-      console.error('Dynamic import failed:', error)
+      log.error('Dynamic import failed', error)
       if (fallback) {
         return fallback
       }
@@ -519,7 +520,7 @@ export class PerformanceOptimizationCoordinator {
     MemoryOptimizer.startCleanup()
 
     this.optimizations.add('initialized')
-    console.log('🚀 Performance optimizations initialized')
+    log.info('Performance optimizations initialized')
   }
 
   /**
@@ -528,7 +529,7 @@ export class PerformanceOptimizationCoordinator {
   cleanup(): void {
     MemoryOptimizer.stopCleanup()
     this.optimizations.clear()
-    console.log('🧹 Performance optimizations cleaned up')
+    log.info('Performance optimizations cleaned up')
   }
 
   /**

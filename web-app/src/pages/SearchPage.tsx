@@ -6,6 +6,7 @@ import { useParkingData } from '../hooks/useParkingData'
 import { useParkingStore } from '../stores/parkingStore'
 import { useUserRole } from '../hooks/useUserRole'  // 🛡️ SECURITY: Role-based permissions
 import { toast } from 'react-hot-toast'
+import { log } from '../utils/secureLogger'
 import type { ParkingEntry } from '../types'
 
 export const SearchPage: React.FC = () => {
@@ -63,13 +64,13 @@ export const SearchPage: React.FC = () => {
 
   const handleEditSuccess = (updatedEntry: ParkingEntry) => {
     toast.success(`Successfully updated ${updatedEntry.vehicleNumber}`)
-    
+
     // Immediately update the store for instant UI synchronization
     handleEntryUpdate(updatedEntry)
-    
+
     // Log for debugging
-    console.log('Entry updated via EditEntryModal - Store updated immediately:', updatedEntry)
-    
+    log.debug('Entry updated via EditEntryModal - Store updated immediately', updatedEntry)
+
     // Close edit modal
     handleCloseEditModal()
   }

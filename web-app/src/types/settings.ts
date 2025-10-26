@@ -1,7 +1,90 @@
 /**
  * Settings System Type Definitions
  * Comprehensive type system for multi-level settings management
+ *
+ * @example Type-safe value handling
+ * ```typescript
+ * import { asSettingNumber, asSettingString, isSettingObject } from './types/settings'
+ *
+ * // Safe number extraction with default
+ * const timeout = asSettingNumber(setting.value, 30)
+ *
+ * // Safe string extraction with default
+ * const name = asSettingString(setting.value, 'Unknown')
+ *
+ * // Type narrowing with guards
+ * if (isSettingObject(setting.value)) {
+ *   // TypeScript knows value is SettingObjectValue here
+ *   const keys = Object.keys(setting.value)
+ * }
+ * ```
  */
+
+// Type-safe setting value types
+export type SettingPrimitiveValue = string | number | boolean | null
+export type SettingArrayValue = Array<SettingPrimitiveValue | SettingObjectValue>
+export type SettingObjectValue = { [key: string]: SettingValue }
+export type SettingValue = SettingPrimitiveValue | SettingArrayValue | SettingObjectValue
+
+// Type guard utilities for narrowing SettingValue
+export function isSettingString(value: SettingValue | undefined): value is string {
+  return typeof value === 'string'
+}
+
+export function isSettingNumber(value: SettingValue | undefined): value is number {
+  return typeof value === 'number'
+}
+
+export function isSettingBoolean(value: SettingValue | undefined): value is boolean {
+  return typeof value === 'boolean'
+}
+
+export function isSettingNull(value: SettingValue | undefined): value is null {
+  return value === null
+}
+
+export function isSettingArray(value: SettingValue | undefined): value is SettingArrayValue {
+  return Array.isArray(value)
+}
+
+export function isSettingObject(value: SettingValue | undefined): value is SettingObjectValue {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+// Helper to safely get string value with default
+export function asSettingString(value: SettingValue | undefined, defaultValue = ''): string {
+  return isSettingString(value) ? value : defaultValue
+}
+
+// Helper to safely get number value with default
+export function asSettingNumber(value: SettingValue | undefined, defaultValue = 0): number {
+  return isSettingNumber(value) ? value : defaultValue
+}
+
+// Helper to safely get boolean value with default
+export function asSettingBoolean(value: SettingValue | undefined, defaultValue = false): boolean {
+  return isSettingBoolean(value) ? value : defaultValue
+}
+
+// Helper to safely get array value with default
+export function asSettingArray(value: SettingValue | undefined, defaultValue: SettingArrayValue = []): SettingArrayValue {
+  return isSettingArray(value) ? value : defaultValue
+}
+
+// Helper to safely get object value with default
+export function asSettingObject(value: SettingValue | undefined, defaultValue: SettingObjectValue = {}): SettingObjectValue {
+  return isSettingObject(value) ? value : defaultValue
+}
+
+// Helper to convert SettingValue to display string
+export function settingValueToString(value: SettingValue | undefined): string {
+  if (value === undefined || value === null) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
+  if (Array.isArray(value)) return JSON.stringify(value)
+  return JSON.stringify(value)
+}
 
 // Core setting types
 export type SettingCategory =
@@ -35,14 +118,14 @@ export interface AppSetting {
   id: string
   category: SettingCategory
   key: string
-  value: any
+  value: SettingValue
   data_type: SettingDataType
   description?: string
-  default_value?: any
+  default_value?: SettingValue
 
   // Validation
-  validation_rules?: Record<string, any>
-  validation?: Record<string, any>  // Additional validation property
+  validation_rules?: Record<string, SettingValue>
+  validation?: Record<string, SettingValue>  // Additional validation property
   enum_values?: string[]
   min_value?: number
   max_value?: number
@@ -68,7 +151,7 @@ export interface UserSetting {
   id: string
   user_id: string
   setting_key: string
-  value: any
+  value: SettingValue
   app_setting_id?: string
   created_at: string
   updated_at: string
@@ -78,7 +161,7 @@ export interface LocationSetting {
   id: string
   location_id: string
   setting_key: string
-  value: any
+  value: SettingValue
   app_setting_id?: string
   created_at: string
   updated_at: string
@@ -89,12 +172,12 @@ export interface SettingsHistory {
   id: string
   setting_id: string
   setting_key: string
-  old_value?: any
-  new_value: any
+  old_value?: SettingValue
+  new_value: SettingValue
   change_type: 'INSERT' | 'UPDATE' | 'DELETE'
   changed_by: string
   change_reason?: string
-  change_context?: Record<string, any>
+  change_context?: Record<string, SettingValue>
   changed_at: string
   source_table: string
   source_ip?: string
@@ -322,8 +405,8 @@ export interface SettingsImportOptions {
 
 export interface SettingsChangeEvent {
   key: string
-  old_value?: any
-  new_value: any
+  old_value?: SettingValue
+  new_value: SettingValue
   category: SettingCategory
   scope: SettingScope
   changed_by: string
@@ -331,7 +414,7 @@ export interface SettingsChangeEvent {
 }
 
 // Hook return types
-export interface UseSettingsReturn<T = any> {
+export interface UseSettingsReturn<T = SettingValue> {
   value: T | undefined
   loading: boolean
   error: string | null
@@ -340,11 +423,11 @@ export interface UseSettingsReturn<T = any> {
   isModified: boolean
 }
 
-export interface UseSettingsCategoryReturn<T = Record<string, any>> {
+export interface UseSettingsCategoryReturn<T = Record<string, SettingValue>> {
   settings: T
   loading: boolean
   error: string | null
-  updateSetting: (key: string, value: any) => Promise<void>
+  updateSetting: (key: string, value: SettingValue) => Promise<void>
   bulkUpdate: (updates: Partial<T>) => Promise<BulkUpdateResult[]>
   reset: () => Promise<void>
   export: () => Promise<SettingsExportData>
@@ -386,7 +469,7 @@ export interface MigrationStatus {
 
 // Cache types
 export interface SettingsCacheEntry {
-  value: any
+  value: SettingValue
   timestamp: number
   expires_at: number
   key: string
@@ -398,23 +481,23 @@ export type SettingsCacheStore = Map<string, SettingsCacheEntry>
 // Validation schema types (JSON Schema compatible)
 export interface SettingValidationSchema {
   type: string
-  properties?: Record<string, any>
+  properties?: Record<string, SettingValidationSchema>
   required?: string[]
   minimum?: number
   maximum?: number
   minLength?: number
   maxLength?: number
   pattern?: string
-  enum?: any[]
-  items?: any
+  enum?: Array<SettingPrimitiveValue>
+  items?: SettingValidationSchema
   additionalProperties?: boolean
 }
 
 // UI Component props
 export interface SettingsFormFieldProps {
   setting: AppSetting
-  value: any
-  onChange: (value: any) => void
+  value: SettingValue
+  onChange: (value: SettingValue) => void
   error?: string
   disabled?: boolean
   showDescription?: boolean
@@ -423,8 +506,8 @@ export interface SettingsFormFieldProps {
 export interface SettingsCategoryTabProps {
   category: SettingCategory
   settings: AppSetting[]
-  values: Record<string, any>
-  onChange: (key: string, value: any) => void
+  values: Record<string, SettingValue>
+  onChange: (key: string, value: SettingValue) => void
   errors: Record<string, string>
   loading?: boolean
 }
@@ -476,28 +559,43 @@ export interface SettingsSubscription {
 
 // Error types
 export class SettingsValidationError extends Error {
+  field: string
+  value: SettingValue
+  validation_rule: SettingValidationSchema | Record<string, SettingValue>
+
   constructor(
     message: string,
-    public field: string,
-    public value: any,
-    public validation_rule: any
+    field: string,
+    value: SettingValue,
+    validation_rule: SettingValidationSchema | Record<string, SettingValue>
   ) {
     super(message)
     this.name = 'SettingsValidationError'
+    this.field = field
+    this.value = value
+    this.validation_rule = validation_rule
   }
 }
 
 export class SettingsPermissionError extends Error {
-  constructor(message: string, public setting_key: string, public required_permission: string) {
+  setting_key: string
+  required_permission: string
+
+  constructor(message: string, setting_key: string, required_permission: string) {
     super(message)
     this.name = 'SettingsPermissionError'
+    this.setting_key = setting_key
+    this.required_permission = required_permission
   }
 }
 
 export class SettingsNotFoundError extends Error {
-  constructor(message: string, public setting_key: string) {
+  setting_key: string
+
+  constructor(message: string, setting_key: string) {
     super(message)
     this.name = 'SettingsNotFoundError'
+    this.setting_key = setting_key
   }
 }
 
@@ -519,11 +617,11 @@ export type SettingsRealtimeStatus =
 export interface SettingsSyncEvent {
   type: 'sync' | 'conflict' | 'error' | 'reconnect' | 'offline_queued'
   key: string
-  value?: any
+  value?: SettingValue
   category: SettingCategory
   client_id: string
   timestamp: number
-  metadata?: Record<string, any>
+  metadata?: Record<string, SettingValue>
 }
 
 export interface SettingsBroadcastMessage {
@@ -533,21 +631,21 @@ export interface SettingsBroadcastMessage {
   timestamp: number
   data: {
     key?: string
-    value?: any
+    value?: SettingValue
     keys?: string[]
-    values?: Record<string, any>
-    metadata?: Record<string, any>
+    values?: Record<string, SettingValue>
+    metadata?: Record<string, SettingValue>
   }
 }
 
 export interface SettingsConflictInfo {
   key: string
-  local_value: any
-  remote_value: any
+  local_value: SettingValue
+  remote_value: SettingValue
   local_timestamp: number
   remote_timestamp: number
   resolution_strategy: SettingsConflictResolution
-  resolved_value: any
+  resolved_value: SettingValue
   resolution_source: 'local' | 'remote' | 'merged'
 }
 

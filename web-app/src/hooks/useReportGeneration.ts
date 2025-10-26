@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { format } from 'date-fns'
 import { reportService } from '../services/reportGenerationService'
 import { reportExportService } from '../services/reportExportService'
+import { log } from '../utils/secureLogger'
 import type {
   ReportType,
   QuickSelectOption,
@@ -227,7 +228,7 @@ export const useReportGeneration = (
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
       setError(errorMessage)
-      console.error('Report generation failed:', err)
+      log.error('Report generation failed', err)
     } finally {
       setIsGenerating(false)
     }

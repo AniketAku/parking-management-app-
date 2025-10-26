@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import type { PrinterProfile } from '../types/printerConfig'
+import { log } from '../utils/secureLogger'
 
 interface MockPrinter {
   checkPrinterStatus(): Promise<string>
@@ -646,7 +647,7 @@ Test completed successfully.
 
   async clearPrintQueue(profile: PrinterProfile): Promise<void> {
     // Implementation would depend on the specific printer service
-    console.log(`Clearing print queue for printer: ${profile.name}`)
+    log.debug('Clearing print queue for printer', { printerName: profile.name })
   }
 
   private async connectToPrinter(_profile: PrinterProfile): Promise<MockPrinter> {

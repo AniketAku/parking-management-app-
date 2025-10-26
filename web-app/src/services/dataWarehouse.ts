@@ -3,6 +3,7 @@
 
 import { supabase } from '../lib/supabase'
 import type { ParkingEntry } from '../types'
+import { log } from '../utils/secureLogger'
 
 // Data Warehouse Schema Types
 export interface FactTable {
@@ -245,7 +246,7 @@ class DataWarehouseETL {
     const errors: string[] = []
     
     try {
-      console.log(`🔄 Starting ETL pipeline: ${jobName}`)
+      log.info('Starting ETL pipeline', { jobName })
       
       switch (jobName) {
         case 'parking_events_etl':
@@ -289,8 +290,7 @@ class DataWarehouseETL {
       
       const duration = performance.now() - startTime
       
-      console.log(`✅ ETL pipeline completed: ${jobName}`)
-      console.log(`📊 Processed: ${recordsProcessed}, Failed: ${recordsFailed}, Duration: ${duration.toFixed(2)}ms`)
+      log.success('ETL pipeline completed', { jobName, recordsProcessed, recordsFailed, duration: duration.toFixed(2) + 'ms' })
       
       return {
         success: recordsFailed === 0,
@@ -304,7 +304,7 @@ class DataWarehouseETL {
       const duration = performance.now() - startTime
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       
-      console.error(`❌ ETL pipeline failed: ${jobName}`, error)
+      log.error('ETL pipeline failed', { jobName, error })
       
       return {
         success: false,
@@ -335,11 +335,11 @@ class DataWarehouseETL {
       }
       
       if (!newEntries || newEntries.length === 0) {
-        console.log('📝 No new parking entries to process')
+        log.info('No new parking entries to process')
         return { processed: 0, failed: 0, errors: [] }
       }
       
-      console.log(`📝 Processing ${newEntries.length} parking entries`)
+      log.info('Processing parking entries', { count: newEntries.length })
       
       // Transform and load in batches
       for (let i = 0; i < newEntries.length; i += this.batchSize) {
@@ -353,7 +353,7 @@ class DataWarehouseETL {
         } catch (error) {
           failed += batch.length
           errors.push(`Batch ${i / this.batchSize + 1} failed: ${error}`)
-          console.error(`❌ Batch processing failed:`, error)
+          log.error('Batch processing failed', { batchNumber: i / this.batchSize + 1, error })
         }
       }
       
@@ -424,7 +424,7 @@ class DataWarehouseETL {
         transformed.push(factRecord)
         
       } catch (error) {
-        console.error(`❌ Failed to transform entry ${entry.id}:`, error)
+        log.error('Failed to transform entry', { entryId: entry.id, error })
       }
     }
     

@@ -1,5 +1,6 @@
 import type { ParkingEntry } from '../types';
 import type { EntryTicketProps, ExitReceiptProps, ThermalTicketProps } from '../types/ticket';
+import { log } from './secureLogger';
 
 // Default business information - customize as needed
 const DEFAULT_BUSINESS_INFO = {
@@ -153,16 +154,17 @@ export const getRecommendedPrintSettings = (ticketType: 'entry' | 'exit' | 'ther
  */
 export const validateTicketData = (ticketData: any, ticketType: string): boolean => {
   const requiredFields = ['businessName', 'ticketNumber', 'vehicleNumber', 'date', 'vehicleType'];
-  
+
+
   for (const field of requiredFields) {
     if (!ticketData[field]) {
-      console.error(`Missing required field: ${field}`);
+      log.error('Missing required field', { field });
       return false;
     }
   }
 
   if (ticketType === 'exit' && !ticketData.outTime) {
-    console.error('Exit time is required for exit receipts');
+    log.error('Exit time is required for exit receipts');
     return false;
   }
 

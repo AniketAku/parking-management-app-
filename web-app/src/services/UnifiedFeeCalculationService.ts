@@ -15,6 +15,7 @@
 import { supabase } from '../lib/supabase'
 import type { VehicleRates, ParkingEntry } from '../types'
 import { BackwardCompatibility } from '../utils/settingsMigration'
+import { log } from '../utils/secureLogger'
 
 // Cache configuration
 interface CacheEntry<T> {
@@ -36,7 +37,7 @@ class UnifiedFeeCalculationService {
   }
 
   private constructor() {
-    console.log('🎯 UnifiedFeeCalculationService initialized - Single source of truth active')
+    log.info('UnifiedFeeCalculationService initialized - Single source of truth active')
   }
 
   // ============================================================================
@@ -53,8 +54,9 @@ class UnifiedFeeCalculationService {
     debugContext?: string
   ): Promise<number> {
     try {
-      console.log(`🧮 UnifiedFeeCalculationService.calculateParkingFee called by: ${debugContext || 'unknown'}`, {
-        vehicleType: vehicleType,
+      log.debug('calculateParkingFee called', {
+        calledBy: debugContext || 'unknown',
+        vehicleType,
         entryTime,
         exitTime: exitTime || 'current time'
       })
@@ -74,7 +76,7 @@ class UnifiedFeeCalculationService {
 
       // 🛡️ SECURITY CHECK: Detect negative duration (exit before entry / future entry date)
       if (diffHours < 0) {
-        console.error('❌ INVALID ENTRY: Negative parking duration detected!', {
+        log.error('INVALID ENTRY: Negative parking duration detected', {
           entryTime,
           exitTime: exitTime || 'current time',
           diffHours: diffHours.toFixed(2),
@@ -92,7 +94,7 @@ class UnifiedFeeCalculationService {
 
       const totalFee = days * rate
 
-      console.log('🧮 Fee Calculation Complete (3-Scenario Logic):', {
+      log.debug('Fee Calculation Complete (3-Scenario Logic)', {
         originalVehicleType: vehicleType,
         normalizedVehicleType,
         rate,
@@ -106,7 +108,7 @@ class UnifiedFeeCalculationService {
       return totalFee
 
     } catch (error) {
-      console.error('❌ UnifiedFeeCalculationService.calculateParkingFee error:', error)
+      log.error('calculateParkingFee error', error)
       // Fallback calculation
       return this.fallbackCalculation(vehicleType, entryTime, exitTime)
     }
@@ -183,7 +185,7 @@ class UnifiedFeeCalculationService {
     const normalized = typeMap[cleaned] || rawVehicleType
 
     if (normalized !== rawVehicleType) {
-      console.log(`🔄 Vehicle type normalized: "${rawVehicleType}" → "${normalized}"`)
+      log.debug('Vehicle type normalized', { from: rawVehicleType, to: normalized })
     }
 
     return normalized
@@ -202,7 +204,7 @@ class UnifiedFeeCalculationService {
       const rate = rates[vehicleType as keyof VehicleRates]
 
       if (rate && rate > 0) {
-        console.log(`💰 Rate from settings: ${vehicleType} = ₹${rate}`)
+        log.debug('Rate from settings', { vehicleType, rate })
         return rate
       }
 
@@ -215,11 +217,11 @@ class UnifiedFeeCalculationService {
       }
 
       const fallbackRate = fallbackRates[vehicleType as keyof VehicleRates] || 100
-      console.warn(`⚠️ Using fallback rate: ${vehicleType} = ₹${fallbackRate} (Settings unavailable)`)
+      log.warn('Using fallback rate (Settings unavailable)', { vehicleType, fallbackRate })
       return fallbackRate
 
     } catch (error) {
-      console.error('❌ Error getting vehicle rate:', error)
+      log.error('Error getting vehicle rate', error)
       return 100 // Ultimate fallback
     }
   }
@@ -230,12 +232,12 @@ class UnifiedFeeCalculationService {
   private async loadVehicleRatesFromSettings(): Promise<VehicleRates> {
     // Check cache first
     if (this.vehicleRatesCache && new Date() < this.vehicleRatesCache.expiry) {
-      console.log('📋 Using cached vehicle rates')
+      log.debug('Using cached vehicle rates')
       return this.vehicleRatesCache.data
     }
 
     try {
-      console.log('🔄 Loading vehicle rates from settings...')
+      log.debug('Loading vehicle rates from settings')
       const rates = await BackwardCompatibility.getSettingWithFallback('vehicle_rates', {
         'Trailer': 225,
         '6 Wheeler': 150,
@@ -252,11 +254,11 @@ class UnifiedFeeCalculationService {
         expiry: new Date(Date.now() + this.CACHE_DURATION_MS)
       }
 
-      console.log('✅ Vehicle rates loaded from settings:', rates)
+      log.success('Vehicle rates loaded from settings', rates)
       return rates
 
     } catch (error) {
-      console.error('❌ Failed to load vehicle rates from settings:', error)
+      log.error('Failed to load vehicle rates from settings', error)
 
       // Return fallback rates
       const fallbackRates: VehicleRates = {
@@ -284,7 +286,7 @@ class UnifiedFeeCalculationService {
                   entry.calculatedFee ??
                   entry.amountPaid ?? 0
 
-    console.log(`💰 Revenue extracted: ₹${amount} from ${this.getFeeSource(entry)} field`)
+    log.debug('Revenue extracted', { amount, source: this.getFeeSource(entry) })
     return amount
   }
 
@@ -315,7 +317,7 @@ class UnifiedFeeCalculationService {
    * Fallback calculation when main calculation fails
    */
   private fallbackCalculation(vehicleType: string, entryTime: string, exitTime?: string): number {
-    console.warn('⚠️ Using fallback calculation')
+    log.warn('Using fallback calculation')
 
     const fallbackRates: Record<string, number> = {
       'Trailer': 225,
@@ -334,7 +336,7 @@ class UnifiedFeeCalculationService {
     // 🎯 Apply same 3-scenario logic in fallback
     const days = diffHours < 24 ? 1 : Math.ceil(diffHours / 24)
 
-    console.warn('⚠️ Fallback calculation with 3-scenario logic:', {
+    log.warn('Fallback calculation with 3-scenario logic', {
       vehicleType: normalizedType,
       rate,
       diffHours: diffHours.toFixed(2),
@@ -350,7 +352,7 @@ class UnifiedFeeCalculationService {
    */
   clearCache(): void {
     this.vehicleRatesCache = null
-    console.log('🗑️ UnifiedFeeCalculationService cache cleared')
+    log.info('UnifiedFeeCalculationService cache cleared')
   }
 
   // ============================================================================

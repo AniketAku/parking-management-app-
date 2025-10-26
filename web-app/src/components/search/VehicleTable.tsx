@@ -6,12 +6,13 @@ import {
   formatDateTime,
   formatCurrency,
   getVehicleTypeColor,
-  calculateDuration,
   calculateParkingFee,
   getRevenueAmount,
   getRevenueSource
 } from '../../utils/helpers'
 import { isCurrentlyParked } from '../../utils/statusHelpers'
+import { UnifiedFeeCalculationService } from '../../services/UnifiedFeeCalculationService'
+import { log } from '../../utils/secureLogger'
 import type { ParkingEntry } from '../../types'
 
 interface VehicleTableProps {
@@ -195,14 +196,16 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
   }
 
   const getDuration = (entry: ParkingEntry) => {
+    const feeService = UnifiedFeeCalculationService.getInstance()
+
     if (isCurrentlyParked(entry.status)) {
-      return calculateDuration(entry.entryTime)
+      return feeService.calculateDuration(entry.entryTime)
     }
-    
+
     if (entry.exitTime) {
-      return calculateDuration(entry.entryTime, entry.exitTime)
+      return feeService.calculateDuration(entry.entryTime, entry.exitTime)
     }
-    
+
     return 'N/A'
   }
 
@@ -225,7 +228,7 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
         )
         return formatCurrency(currentFee)
       } catch (error) {
-        console.warn('Error calculating current parking fee:', error)
+        log.warn('Error calculating current parking fee', error)
         return formatCurrency(entry.calculatedFee || 0)
       }
     }
@@ -247,7 +250,7 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
         )
         return formatCurrency(calculatedFee)
       } catch (error) {
-        console.warn('Error calculating parking fee:', error)
+        log.warn('Error calculating parking fee', error)
       }
     }
     
@@ -257,20 +260,20 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-text-primary">Vehicle Records</h3>
+            <h3 className="text-lg lg:text-xl font-semibold text-text-primary">Vehicle Records</h3>
             <p className="text-sm text-text-muted mt-1">
               {loading ? 'Loading...' : `${entries.length} record${entries.length !== 1 ? 's' : ''} found`}
             </p>
           </div>
-          
+
           {entries.length > 0 && onExportData && (
             <button
               onClick={onExportData}
-              className="flex items-center space-x-2 px-4 py-2 text-sm bg-success-500 text-white rounded-lg hover:bg-success-600 transition-colors"
+              className="flex items-center justify-center space-x-2 px-6 py-3 lg:px-4 lg:py-2 text-base lg:text-sm bg-success-500 text-white rounded-lg hover:bg-success-600 transition-colors min-h-[48px] lg:min-h-0"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <span>Export Data</span>
@@ -279,9 +282,110 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
         </div>
       </CardHeader>
 
-      <CardContent className="p-0">
-        <div className="overflow-x-auto max-h-[60vh]">
-          <table className="min-w-full divide-y divide-border-light">
+      <CardContent className="p-0 lg:p-0">
+        {/* Mobile Card View - OPTIMIZED for 6.5-inch displays */}
+        <div className="lg:hidden px-4 py-3 max-h-[70vh] overflow-y-auto">
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="table-mobile-card animate-pulse">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="py-12 text-center">
+              <div className="w-12 h-12 bg-surface-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-medium text-text-primary">No vehicle records yet</h3>
+              <p className="text-sm text-text-muted mt-1">Vehicle records will appear here once you start registering vehicles.</p>
+            </div>
+          ) : (
+            paginatedEntries.map((entry) => (
+              <div
+                key={entry.id}
+                onClick={() => onEntryClick?.(entry)}
+                className="table-mobile-card"
+              >
+                {/* Card Header */}
+                <div className="table-mobile-card-header">
+                  <div className="flex-1 min-w-0">
+                    <div className="table-mobile-card-title break-words">
+                      {entry.vehicleNumber}
+                    </div>
+                    <div className="table-mobile-card-subtitle">
+                      {entry.driverName}
+                    </div>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className={`${getVehicleTypeColor(entry.vehicleType)} flex-shrink-0 ml-2`}
+                  >
+                    {entry.vehicleType}
+                  </Badge>
+                </div>
+
+                {/* Card Body */}
+                <div className="table-mobile-card-body">
+                  <div className="table-mobile-card-row">
+                    <span className="table-mobile-card-label">Transport</span>
+                    <span className="table-mobile-card-value">{entry.transportName}</span>
+                  </div>
+
+                  <div className="table-mobile-card-row">
+                    <span className="table-mobile-card-label">Entry</span>
+                    <span className="table-mobile-card-value text-xs">{formatDateTime(entry.entryTime)}</span>
+                  </div>
+
+                  {entry.exitTime && (
+                    <div className="table-mobile-card-row">
+                      <span className="table-mobile-card-label">Exit</span>
+                      <span className="table-mobile-card-value text-xs">{formatDateTime(entry.exitTime)}</span>
+                    </div>
+                  )}
+
+                  <div className="table-mobile-card-row">
+                    <span className="table-mobile-card-label">Duration</span>
+                    <span className="table-mobile-card-value">{getDuration(entry)}</span>
+                  </div>
+
+                  <div className="table-mobile-card-row">
+                    <span className="table-mobile-card-label">Status</span>
+                    <div className="flex justify-end">
+                      {getStatusBadge(entry)}
+                    </div>
+                  </div>
+
+                  <div className="table-mobile-card-row">
+                    <span className="table-mobile-card-label">Payment</span>
+                    <div className="flex justify-end">
+                      {getPaymentBadge(entry.paymentStatus)}
+                    </div>
+                  </div>
+
+                  <div className="table-mobile-card-row">
+                    <span className="table-mobile-card-label">Amount</span>
+                    <span className="table-mobile-card-value font-semibold text-primary-600 dark:text-primary-400">
+                      {getAmountDisplay(entry)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View - hidden on mobile */}
+        <div className="hidden lg:block overflow-x-auto max-h-[60vh] data-table-container">
+          <table className="min-w-full divide-y divide-border-light data-table">
             <thead className="sticky-table-header">
               <tr>
                 <TableHeader
@@ -402,39 +506,39 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
           </table>
         </div>
         
-        {/* Pagination Controls */}
+        {/* Pagination Controls - Mobile-optimized */}
         {entries.length > 0 && (
-          <div className="px-6 py-4 border-t border-border-light bg-surface-light">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+          <div className="px-4 lg:px-6 py-4 border-t border-border-light bg-surface-light">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0">
               {/* Results info and items per page picker */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                <div className="text-sm text-text-muted">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
+                <div className="text-base lg:text-sm text-text-muted">
                   Showing {startIndex + 1}-{Math.min(endIndex, entries.length)} of {entries.length} results
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-text-muted">Show:</span>
+                  <span className="text-base lg:text-sm text-text-muted">Show:</span>
                   <select
                     value={itemsPerPage}
                     onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                    className="form-select !py-2 !px-3 text-sm min-w-[80px] w-auto"
+                    className="form-select text-base lg:text-sm min-w-[100px] w-auto"
                   >
                     <option value={20}>20</option>
                     <option value={50}>50</option>
                     <option value={100}>100</option>
                   </select>
-                  <span className="text-sm text-text-muted">per page</span>
+                  <span className="text-base lg:text-sm text-text-muted">per page</span>
                 </div>
               </div>
 
               {/* Navigation controls */}
               {totalPages > 1 && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-center space-x-2 w-full lg:w-auto">
                   {/* Previous button */}
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm border border-border-light rounded-md hover:bg-surface-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2.5 lg:px-3 lg:py-1 text-base lg:text-sm border border-border-light rounded-lg lg:rounded-md hover:bg-surface-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] lg:min-h-0"
                   >
                     Previous
                   </button>
@@ -446,30 +550,33 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                       <>
                         <button
                           onClick={() => handlePageChange(1)}
-                          className="px-3 py-1 text-sm border border-border-light rounded-md hover:bg-surface-light transition-colors"
+                          className="hidden sm:block px-3 py-1 text-sm border border-border-light rounded-md hover:bg-surface-light transition-colors"
                         >
                           1
                         </button>
                         {currentPage > 4 && (
-                          <span className="px-2 text-sm text-text-muted">...</span>
+                          <span className="hidden sm:inline px-2 text-sm text-text-muted">...</span>
                         )}
                       </>
                     )}
 
-                    {/* Current page range */}
+                    {/* Current page range - fewer pages on mobile */}
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
                       if (pageNum > totalPages) return null
-                      
+
+                      // On mobile, only show 3 pages around current
+                      const isMobileVisible = Math.abs(pageNum - currentPage) <= 1 || pageNum === currentPage
+
                       return (
                         <button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
-                          className={`px-3 py-1 text-sm border rounded-md transition-colors ${
+                          className={`px-4 py-2.5 lg:px-3 lg:py-1 text-base lg:text-sm border rounded-lg lg:rounded-md transition-colors min-h-[44px] lg:min-h-0 ${
                             pageNum === currentPage
                               ? 'bg-primary-500 text-white border-primary-500'
                               : 'border-border-light hover:bg-surface-light'
-                          }`}
+                          } ${isMobileVisible ? '' : 'hidden sm:block'}`}
                         >
                           {pageNum}
                         </button>
@@ -480,11 +587,11 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                     {currentPage < totalPages - 2 && (
                       <>
                         {currentPage < totalPages - 3 && (
-                          <span className="px-2 text-sm text-text-muted">...</span>
+                          <span className="hidden sm:inline px-2 text-sm text-text-muted">...</span>
                         )}
                         <button
                           onClick={() => handlePageChange(totalPages)}
-                          className="px-3 py-1 text-sm border border-border-light rounded-md hover:bg-surface-light transition-colors"
+                          className="hidden sm:block px-3 py-1 text-sm border border-border-light rounded-md hover:bg-surface-light transition-colors"
                         >
                           {totalPages}
                         </button>
@@ -496,7 +603,7 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm border border-border-light rounded-md hover:bg-surface-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2.5 lg:px-3 lg:py-1 text-base lg:text-sm border border-border-light rounded-lg lg:rounded-md hover:bg-surface-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] lg:min-h-0"
                   >
                     Next
                   </button>

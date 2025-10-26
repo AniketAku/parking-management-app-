@@ -228,9 +228,9 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
 
       if (result.success) {
         // Trigger download
-        if (result.downloadLink) {
+        if (result.downloadUrl) {
           const link = document.createElement('a')
-          link.href = result.downloadLink
+          link.href = result.downloadUrl
           link.download = result.fileName
           document.body.appendChild(link)
           link.click()
@@ -537,8 +537,8 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Include in Report</label>
             <div className="space-y-2">
               {[
-                { key: 'includeActiveSessions', label: 'Active Sessions' },
-                { key: 'includeCompletedSessions', label: 'Completed Sessions' },
+                { key: 'includeActiveSessions', label: 'Active/Parked Vehicles' },
+                { key: 'includeCompletedSessions', label: 'Vehicle Exits' },
                 { key: 'includeExpenses', label: 'Expenses' },
                 { key: 'includePendingPayments', label: 'Pending Payments' }
               ].map((item) => {
@@ -702,9 +702,9 @@ const DetailedReportDisplay: React.FC<{ data: { entries: ParkingEntry[]; summary
       {/* Summary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: 'Total Sessions', value: data.summary.totalSessions, color: 'text-blue-600 dark:text-blue-400' },
+          { title: 'Total Vehicle Movement', value: data.summary.totalSessions, color: 'text-blue-600 dark:text-blue-400' },
           { title: 'Revenue', value: `₹${data.summary.revenue.toFixed(2)}`, color: 'text-green-600 dark:text-green-400' },
-          { title: 'Active Sessions', value: data.summary.activeSessions, color: 'text-yellow-600 dark:text-yellow-400' },
+          { title: 'Active/Parked Vehicles', value: data.summary.activeSessions, color: 'text-yellow-600 dark:text-yellow-400' },
           { title: 'Net Income', value: `₹${data.summary.netIncome.toFixed(2)}`, color: 'text-purple-600 dark:text-purple-400' }
         ].map((card, index) => (
           <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { log } from '../utils/secureLogger'
 
 /**
  * Database setup utility to create missing tables and columns
@@ -9,13 +10,13 @@ export class DatabaseSetup {
    */
   static async addMissingColumns(): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('Adding missing columns to users table...')
-      
+      log.info('Adding missing columns to users table')
+
       // Try to add the is_approved column
       const { error: approvedError } = await supabase.rpc('add_is_approved_column')
-      
+
       if (approvedError && !approvedError.message.includes('already exists')) {
-        console.warn('Could not add is_approved column via RPC:', approvedError.message)
+        log.warn('Could not add is_approved column via RPC', { error: approvedError.message })
       }
       
       // Test if the column now exists by trying to insert a test record
@@ -56,7 +57,7 @@ export class DatabaseSetup {
         message: 'All required columns exist in users table'
       }
     } catch (error) {
-      console.error('Database setup error:', error)
+      log.error('Database setup error', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Database setup failed'
@@ -75,7 +76,7 @@ export class DatabaseSetup {
         return schemaCheck
       }
       
-      console.log('Creating admin user with email:', email)
+      log.info('Creating admin user with email', { email })
       
       // 1. Create user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -118,12 +119,12 @@ export class DatabaseSetup {
         })
       
       if (profileError) {
-        console.error('Profile creation error:', profileError)
+        log.error('Profile creation error', profileError)
         // Try to clean up auth user
         try {
           await supabase.auth.admin.deleteUser(authData.user.id)
         } catch (cleanupError) {
-          console.warn('Could not clean up auth user:', cleanupError)
+          log.warn('Could not clean up auth user', cleanupError)
         }
         throw new Error(`Failed to create admin profile: ${profileError.message}`)
       }
@@ -133,7 +134,7 @@ export class DatabaseSetup {
         message: 'Admin user created successfully!'
       }
     } catch (error) {
-      console.error('Admin creation error:', error)
+      log.error('Admin creation error', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to create admin user'
@@ -155,18 +156,18 @@ export class DatabaseSetup {
         .single()
       
       if (existingAdmin) {
-        console.log('Admin user already exists:', existingAdmin.username)
+        log.info('Admin user already exists', { username: existingAdmin.username })
         return {
           success: true,
           message: `Admin user already exists: ${existingAdmin.username}`
         }
       }
-      
+
       // Create admin user
-      console.log('No admin user found, creating one...')
+      log.info('No admin user found, creating one')
       return await this.createAdminUser('Aniket@123', 'aniketawachat74@gmail.com', '12345678')
     } catch (error) {
-      console.error('Database initialization error:', error)
+      log.error('Database initialization error', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Database initialization failed'

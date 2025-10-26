@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '../lib/supabase'
+import { log } from './secureLogger'
 
 interface BusinessSettingsData {
   category: string
@@ -98,33 +99,33 @@ const businessSettings: BusinessSettingsData[] = [
 ]
 
 export async function seedBusinessSettings() {
-  console.log('🌱 Starting business settings seeding process...')
-  
+  log.info('Starting business settings seeding process')
+
   try {
     // Check if settings already exist
     const { data: existingSettings, error: checkError } = await supabase
       .from('app_settings')
       .select('category, key')
       .eq('category', 'business')
-    
+
     if (checkError) {
-      console.error('❌ Error checking existing settings:', checkError)
+      log.error('Error checking existing settings', checkError)
       throw checkError
     }
 
     const existingKeys = new Set(existingSettings?.map(s => s.key) || [])
-    console.log('📊 Found existing business settings:', existingKeys.size, 'keys')
-    
+    log.info('Found existing business settings', { count: existingKeys.size })
+
     // Filter out settings that already exist
     const settingsToInsert = businessSettings.filter(setting => !existingKeys.has(setting.key))
-    
+
     if (settingsToInsert.length === 0) {
-      console.log('✅ All business settings already exist in database')
+      log.success('All business settings already exist in database')
       return { success: true, message: 'All business settings already exist', inserted: 0 }
     }
 
-    console.log('🌱 Seeding', settingsToInsert.length, 'missing business settings...')
-    
+    log.info('Seeding missing business settings', { count: settingsToInsert.length })
+
     // Insert missing settings
     const { data, error } = await supabase
       .from('app_settings')
@@ -132,15 +133,13 @@ export async function seedBusinessSettings() {
       .select()
 
     if (error) {
-      console.error('❌ Error seeding business settings:', error)
+      log.error('Error seeding business settings', error)
       throw error
     }
 
-    console.log('✅ Successfully seeded', settingsToInsert.length, 'business settings')
-    
-    // Log what was seeded
-    settingsToInsert.forEach(setting => {
-      console.log(`   • ${setting.key}`)
+    log.success('Successfully seeded business settings', {
+      count: settingsToInsert.length,
+      settings: settingsToInsert.map(s => s.key)
     })
 
     return {
@@ -151,7 +150,7 @@ export async function seedBusinessSettings() {
     }
 
   } catch (error) {
-    console.error('❌ Failed to seed business settings:', error)
+    log.error('Failed to seed business settings', error)
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -166,7 +165,7 @@ export async function checkBusinessSettingsStatus() {
       .from('app_settings')
       .select('category, key')
       .eq('category', 'business')
-    
+
     if (error) {
       throw error
     }
@@ -174,7 +173,7 @@ export async function checkBusinessSettingsStatus() {
     const expectedKeys = businessSettings.map(s => s.key)
     const existingKeys = data?.map(s => s.key) || []
     const missingKeys = expectedKeys.filter(key => !existingKeys.includes(key))
-    
+
     return {
       total: expectedKeys.length,
       existing: existingKeys.length,
@@ -183,7 +182,7 @@ export async function checkBusinessSettingsStatus() {
       needsSeeding: missingKeys.length > 0
     }
   } catch (error) {
-    console.error('Error checking business settings status:', error)
+    log.error('Error checking business settings status', error)
     return {
       total: 0,
       existing: 0,

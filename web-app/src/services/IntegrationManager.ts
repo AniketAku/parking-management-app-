@@ -7,6 +7,7 @@ import { realtimeDashboardService } from './RealtimeDashboardService';
 import { shiftLinkingService } from './ShiftLinkingService';
 import { performanceOptimizationService } from './PerformanceOptimizationService';
 import { errorHandlingService } from './ErrorHandlingService';
+import { log } from '../utils/secureLogger';
 
 export interface IntegrationStatus {
   services: {
@@ -68,7 +69,7 @@ export class IntegrationManager {
 
   private async performInitialization(): Promise<void> {
     try {
-      console.log('Initializing Real-Time Integration Manager...');
+      log.info('Initializing Real-Time Integration Manager...');
 
       // Initialize services in order of dependency
       await this.initializeErrorHandling();
@@ -82,9 +83,9 @@ export class IntegrationManager {
       // Start health monitoring
       this.startHealthMonitoring();
 
-      console.log('Real-Time Integration Manager initialized successfully');
+      log.success('Real-Time Integration Manager initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize Integration Manager:', error);
+      log.error('Failed to initialize Integration Manager', error);
       await errorHandlingService.reportError(error as Error, {
         operation: 'integration_manager_init'
       }, 'critical');
@@ -96,7 +97,7 @@ export class IntegrationManager {
     try {
       // Error handling service is initialized on instantiation
       this.status.services.errorHandling = 'ready';
-      console.log('✓ Error Handling Service ready');
+      log.success('Error Handling Service ready');
     } catch (error) {
       this.status.services.errorHandling = 'error';
       throw error;
@@ -107,7 +108,7 @@ export class IntegrationManager {
     try {
       // Performance optimization service is initialized on instantiation
       this.status.services.performanceOptimization = 'ready';
-      console.log('✓ Performance Optimization Service ready');
+      log.success('Performance Optimization Service ready');
     } catch (error) {
       this.status.services.performanceOptimization = 'error';
       throw error;
@@ -118,7 +119,7 @@ export class IntegrationManager {
     try {
       // Shift linking service is ready on instantiation
       this.status.services.shiftLinking = 'ready';
-      console.log('✓ Shift Linking Service ready');
+      log.success('Shift Linking Service ready');
     } catch (error) {
       this.status.services.shiftLinking = 'error';
       throw error;
@@ -129,7 +130,7 @@ export class IntegrationManager {
     try {
       await realtimeDashboardService.initialize();
       this.status.services.realtimeDashboard = 'ready';
-      console.log('✓ Real-Time Dashboard Service ready');
+      log.success('Real-Time Dashboard Service ready');
     } catch (error) {
       this.status.services.realtimeDashboard = 'error';
       throw error;
@@ -222,11 +223,11 @@ export class IntegrationManager {
 
       // Log health status changes
       if (this.status.overallHealth !== 'healthy') {
-        console.warn('Integration Manager health:', this.status.overallHealth, this.status);
+        log.warn('Integration Manager health', { health: this.status.overallHealth, status: this.status });
       }
 
     } catch (error) {
-      console.error('Health check failed:', error);
+      log.error('Health check failed', error);
       this.status.overallHealth = 'critical';
     }
   }
@@ -243,7 +244,7 @@ export class IntegrationManager {
    */
   async reconnectAll(): Promise<void> {
     try {
-      console.log('Reconnecting all services...');
+      log.info('Reconnecting all services...');
 
       // Clear caches
       await performanceOptimizationService.clearCache();
@@ -256,9 +257,9 @@ export class IntegrationManager {
       this.status.services.realtimeDashboard = 'ready';
       this.status.overallHealth = 'healthy';
 
-      console.log('All services reconnected successfully');
+      log.success('All services reconnected successfully');
     } catch (error) {
-      console.error('Failed to reconnect services:', error);
+      log.error('Failed to reconnect services', error);
       await errorHandlingService.reportError(error as Error, {
         operation: 'integration_manager_reconnect'
       }, 'high');
@@ -271,7 +272,7 @@ export class IntegrationManager {
    */
   async shutdown(): Promise<void> {
     try {
-      console.log('Shutting down Integration Manager...');
+      log.info('Shutting down Integration Manager...');
 
       // Stop health monitoring
       if (this.healthCheckInterval) {
@@ -283,9 +284,9 @@ export class IntegrationManager {
       performanceOptimizationService.destroy();
       errorHandlingService.destroy();
 
-      console.log('Integration Manager shutdown completed');
+      log.success('Integration Manager shutdown completed');
     } catch (error) {
-      console.error('Error during shutdown:', error);
+      log.error('Error during shutdown', error);
     }
   }
 
@@ -360,6 +361,6 @@ export const integrationManager = IntegrationManager.getInstance();
 // Auto-initialize in browser environment
 if (typeof window !== 'undefined') {
   integrationManager.initialize().catch(error => {
-    console.error('Failed to auto-initialize Integration Manager:', error);
+    log.error('Failed to auto-initialize Integration Manager', error);
   });
 }

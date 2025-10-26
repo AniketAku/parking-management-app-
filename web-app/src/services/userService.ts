@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { log } from '../utils/secureLogger'
 
 export interface UserRegistration {
   username: string
@@ -52,7 +53,7 @@ export class UserService {
         message: data.message || 'Registration completed'
       }
     } catch (error) {
-      console.error('Registration error:', error)
+      log.error('Registration error', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Registration failed'
@@ -110,7 +111,7 @@ export class UserService {
         }
       }
     } catch (error) {
-      console.error('Admin creation error:', error)
+      log.error('Admin creation error', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to create admin user'
@@ -140,7 +141,7 @@ export class UserService {
 
       return data || []
     } catch (error) {
-      console.error('Error getting pending users:', error)
+      log.error('Error getting pending users', error)
       return []
     }
   }
@@ -167,7 +168,7 @@ export class UserService {
 
       return data || []
     } catch (error) {
-      console.error('Error getting approved users:', error)
+      log.error('Error getting approved users', error)
       return []
     }
   }
@@ -183,7 +184,7 @@ export class UserService {
       const decoded = JSON.parse(atob(storedAuth))
       return decoded.state?.user?.id || null
     } catch (error) {
-      console.error('Failed to get current user ID:', error)
+      log.error('Failed to get current user ID', error)
       return null
     }
   }
@@ -205,7 +206,7 @@ export class UserService {
         message: data?.message || 'User approved successfully!'
       }
     } catch (error) {
-      console.error('Error approving user:', error)
+      log.error('Error approving user', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to approve user'
@@ -214,18 +215,23 @@ export class UserService {
   }
 
   /**
-   * Reject a user (removes from users table only - phone-based users don't exist in Supabase Auth)
+   * Reject a user (removes from users table using RPC to bypass RLS)
    */
   static async rejectUser(userId: string): Promise<{ success: boolean; message: string }> {
     try {
-      // Remove from users table directly (phone-based users don't exist in Supabase Auth)
-      const { error: profileError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId)
+      // Use RPC function to delete user (bypasses RLS)
+      const { data, error } = await supabase
+        .rpc('delete_user', {
+          user_id_param: userId
+        })
 
-      if (profileError) {
-        throw new Error(`Failed to remove user profile: ${profileError.message}`)
+      if (error) {
+        throw new Error(`Failed to delete user: ${error.message}`)
+      }
+
+      // The RPC function returns a JSON object with success and message
+      if (data && typeof data === 'object' && 'success' in data) {
+        return data as { success: boolean; message: string }
       }
 
       return {
@@ -233,7 +239,7 @@ export class UserService {
         message: 'User rejected and removed successfully!'
       }
     } catch (error) {
-      console.error('Error rejecting user:', error)
+      log.error('Error rejecting user', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to reject user'
@@ -261,7 +267,7 @@ export class UserService {
         message: data?.message || `User role updated to ${role} successfully!`
       }
     } catch (error) {
-      console.error('Error updating user role:', error)
+      log.error('Error updating user role', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to update user role'
@@ -289,7 +295,7 @@ export class UserService {
         message: data?.message || `User ${isApproved ? 'activated' : 'deactivated'} successfully!`
       }
     } catch (error) {
-      console.error('Error updating user status:', error)
+      log.error('Error updating user status', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to update user status'
@@ -315,7 +321,7 @@ export class UserService {
         message: data?.message || 'Unknown status'
       }
     } catch (error) {
-      console.error('Failed to check bootstrap status:', error)
+      log.error('Failed to check bootstrap status', error)
       return {
         needsBootstrap: true, // Default to requiring bootstrap on error
         adminCount: 0,
@@ -333,14 +339,14 @@ export class UserService {
       const bootstrapStatus = await this.needsAdminBootstrap()
 
       if (bootstrapStatus.needsBootstrap) {
-        console.log('Creating admin user...')
+        log.info('Creating admin user...')
         const result = await this.createAdminUser('admin', 'Admin@2024!', '+1234567890')
-        console.log('Admin user creation result:', result.message)
+        log.success('Admin user creation result', { message: result.message })
       } else {
-        console.log(`Admin user already exists (${bootstrapStatus.adminCount} admin users found)`)
+        log.info('Admin user already exists', { adminCount: bootstrapStatus.adminCount })
       }
     } catch (error) {
-      console.error('Failed to initialize admin user:', error)
+      log.error('Failed to initialize admin user', error)
     }
   }
 }

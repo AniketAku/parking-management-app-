@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { reportService } from './reportGenerationService';
 import { reportExportService } from './reportExportService';
 import type { ReportGenerationRequest, ReportType } from '../types/reports';
+import { log } from '../utils/secureLogger';
 
 export interface ShiftReportExportOptions {
   format: 'pdf' | 'excel' | 'csv';
@@ -717,7 +718,7 @@ export class ShiftReportService {
         .not('employee_name', 'is', null);
 
       if (sessionError) {
-        console.error('Error fetching shift sessions:', sessionError);
+        log.error('Error fetching shift sessions', sessionError);
         return [];
       }
 
@@ -740,7 +741,7 @@ export class ShiftReportService {
       return uniqueOperators.sort((a, b) => a.name.localeCompare(b.name));
 
     } catch (error) {
-      console.error('Error in getAvailableOperators:', error);
+      log.error('Error in getAvailableOperators', error);
       return [];
     }
   }
@@ -756,7 +757,7 @@ export class ShiftReportService {
         .limit(50);
 
       if (shiftError) {
-        console.error('Error fetching shift periods:', shiftError);
+        log.error('Error fetching shift periods', shiftError);
         return [];
       }
 
@@ -774,7 +775,7 @@ export class ShiftReportService {
       }));
 
     } catch (error) {
-      console.error('Error in getAvailableShiftPeriods:', error);
+      log.error('Error in getAvailableShiftPeriods', error);
       return [];
     }
   }
@@ -786,7 +787,7 @@ export class ShiftReportService {
       const operators = await service.getAvailableOperators();
       return operators.map(op => op.name);
     } catch (error) {
-      console.error('Error in static getAvailableOperators:', error);
+      log.error('Error in static getAvailableOperators', error);
       return [];
     }
   }
@@ -866,7 +867,7 @@ export class ShiftReportService {
         vehicleActivity
       };
     } catch (error) {
-      console.error('Error generating report:', error);
+      log.error('Error generating report', error);
       throw error;
     }
   }
@@ -968,7 +969,7 @@ export class ShiftReportService {
 
       return downloadUrl;
     } catch (error) {
-      console.error('Error generating PDF report:', error);
+      log.error('Error generating PDF report', error);
       throw error;
     }
   }
@@ -1052,7 +1053,7 @@ export class ShiftReportService {
 
       return downloadUrl;
     } catch (error) {
-      console.error('Error generating Excel report:', error);
+      log.error('Error generating Excel report', error);
       throw error;
     }
   }
@@ -1121,7 +1122,7 @@ export class ShiftReportService {
 
       return downloadUrl;
     } catch (error) {
-      console.error('Error generating CSV report:', error);
+      log.error('Error generating CSV report', error);
       throw error;
     }
   }

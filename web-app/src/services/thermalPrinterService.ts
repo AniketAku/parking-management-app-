@@ -3,6 +3,7 @@
  * Unified interface for thermal printing with multiple connection types and ESC/POS support
  */
 
+import { log } from '../utils/secureLogger'
 import type {
   ThermalPrinterService,
   ParkingTicketData,
@@ -436,7 +437,7 @@ export class ThermalPrinterManager {
 
       return printerProfiles;
     } catch (error) {
-      console.error('Error discovering USB printers:', error);
+      log.error('Error discovering USB printers', error);
       return [];
     }
   }
@@ -573,7 +574,7 @@ export class ThermalPrinterManager {
         try {
           callback(event);
         } catch (error) {
-          console.error('Error in event listener:', error);
+          log.error('Error in event listener', error);
         }
       });
     }

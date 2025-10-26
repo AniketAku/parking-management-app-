@@ -1,15 +1,16 @@
-import type { 
-  PrintJob, 
-  PrintQueueService, 
-  PrintQueueStatus, 
-  PrintHistoryFilters, 
-  PrinterProfile, 
+import type {
+  PrintJob,
+  PrintQueueService,
+  PrintQueueStatus,
+  PrintHistoryFilters,
+  PrinterProfile,
   PrintResult,
   PrintJobCreate,
   PrintJobUpdate,
   PrintStatistics
 } from '../types/printQueue';
 import { PriorityQueue, calculatePrintPriority } from '../utils/PriorityQueue';
+import { log } from '../utils/secureLogger';
 
 /**
  * Print Queue Manager - Handles background print processing with retry logic
@@ -99,7 +100,7 @@ export class PrintQueueManager implements PrintQueueService {
         await this.executePrintJob(job);
       }
     } catch (error) {
-      console.error('Print queue processing error:', error);
+      log.error('Print queue processing error', error);
     } finally {
       this.processing = false;
       await this.notifyStatusChange();
@@ -428,17 +429,17 @@ export class PrintQueueManager implements PrintQueueService {
   // Database operations (mock implementations)
   private async persistJob(job: PrintJob): Promise<void> {
     // Mock database persistence
-    console.log(`Persisting job ${job.id} to database`);
+    log.debug('Persisting job to database', { jobId: job.id });
   }
 
   private async updateJobInDatabase(job: PrintJob): Promise<void> {
     // Mock database update
-    console.log(`Updating job ${job.id} in database`);
+    log.debug('Updating job in database', { jobId: job.id });
   }
 
   private async deleteJobFromDatabase(jobId: string): Promise<void> {
     // Mock database deletion
-    console.log(`Deleting job ${jobId} from database`);
+    log.debug('Deleting job from database', { jobId });
   }
 
   // Cleanup

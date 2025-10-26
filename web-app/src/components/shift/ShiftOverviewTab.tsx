@@ -3,171 +3,46 @@
 // Real-time shift status, statistics, and quick actions
 // =============================================================================
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { supabase } from '../../lib/supabase'
-import type { ShiftLinkingState, ShiftLinkingMetrics } from '../../hooks/useShiftLinking'
-
-interface ShiftSession {
-  id: string
-  employee_id: string              // Database column name
-  employee_name: string             // Database column name
-  employee_phone?: string           // Database column name
-  shift_start_time: string          // Database column name
-  shift_end_time?: string           // Database column name
-  status: string
-  opening_cash_amount?: number      // Database column name
-  closing_cash_amount?: number      // Database column name
-  shift_notes?: string              // Database column name
-}
+import React, { useState, useEffect, useCallback } from 'react'
+import type { ShiftLinkingMetrics } from '../../hooks/useShiftLinking'
+import type { UseShiftDataReturn } from '../../hooks/useShiftData'
 
 interface ShiftOverviewTabProps {
-  linkingState: ShiftLinkingState
+  shiftData: UseShiftDataReturn
   linkingMetrics: ShiftLinkingMetrics | null
   onRefresh: () => Promise<void>
   isLoading: boolean
+  onNavigateToReports?: () => void
+  onNavigateToOperations?: () => void
+  onNavigateToSettings?: () => void
 }
 
 export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
-  linkingState,
+  shiftData,
   linkingMetrics,
   onRefresh,
-  isLoading
+  isLoading,
+  onNavigateToReports,
+  onNavigateToOperations,
+  onNavigateToSettings
 }) => {
-  // Local state for active shift details
-  const [activeShift, setActiveShift] = useState<ShiftSession | null>(null)
+  // ✅ SIMPLIFIED: Only local state needed is shift duration timer
   const [shiftDuration, setShiftDuration] = useState<string>('00:00:00')
-  const [todayStats, setTodayStats] = useState({
-    totalRevenue: 0,
-    vehiclesProcessed: 0,
-    currentlyParked: 0,
-    averageSessionTime: 0
-  })
 
-  // Fetch active shift details
-  const fetchActiveShift = useCallback(async () => {
-    if (!linkingState.activeShiftId) {
-      setActiveShift(null)
-      return
-    }
+  // ✅ CLEAN: All data comes from centralized shiftData hook
+  const {
+    shift: activeShift,
+    todayStats,
+    totalExpenses,
+    totalCashDeposits,
+    currentCash,
+    expensesByCategory,
+    expenses
+  } = shiftData
 
-    try {
-      const { data, error } = await supabase
-        .from('shift_sessions')
-        .select('*')
-        .eq('id', linkingState.activeShiftId)
-        .single()
+  const expenseCount = expenses.length
 
-      if (error) throw error
-
-      setActiveShift(data as ShiftSession)
-    } catch (error) {
-      console.error('Error fetching active shift details:', error)
-    }
-  }, [linkingState.activeShiftId])
-
-  // Fetch today's statistics
-  const fetchTodayStats = useCallback(async () => {
-    try {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-
-      // Try shift_statistics view first (if migration deployed)
-      if (linkingState.activeShiftId) {
-        const { data: shiftStats, error: statsError } = await supabase
-          .from('shift_statistics')
-          .select('*')
-          .eq('shift_id', linkingState.activeShiftId)
-          .single()
-
-        if (!statsError && shiftStats) {
-          // Use real data from shift_statistics view
-          setTodayStats({
-            totalRevenue: shiftStats.revenue_collected || 0,
-            vehiclesProcessed: shiftStats.vehicles_entered || 0,
-            currentlyParked: shiftStats.vehicles_currently_parked || 0,
-            averageSessionTime: Math.round(shiftStats.shift_duration_minutes / Math.max(shiftStats.vehicles_entered, 1) || 0)
-          })
-          return
-        }
-      }
-
-      // Fallback: Query parking_entries directly (works without migration)
-      // ✅ FIX: Include multi-day sessions - entries where EITHER entry_time OR exit_time is today
-      const todayStart = new Date(today)
-      todayStart.setHours(0, 0, 0, 0)
-      const todayEnd = new Date(today)
-      todayEnd.setHours(23, 59, 59, 999)
-
-      const { data: parkingEntries, error } = await supabase
-        .from('parking_entries')
-        .select('*')
-        .or(`and(entry_time.gte.${todayStart.toISOString()},entry_time.lte.${todayEnd.toISOString()}),and(exit_time.gte.${todayStart.toISOString()},exit_time.lte.${todayEnd.toISOString()})`)
-
-      if (error) {
-        console.error('Error fetching parking entries:', error)
-        return
-      }
-
-      console.log('📊 SHIFT OVERVIEW - Fetched entries:', {
-        totalCount: parkingEntries?.length || 0,
-        firstEntry: parkingEntries?.[0] ? {
-          id: parkingEntries[0].id,
-          entry_time: parkingEntries[0].entry_time,
-          exit_time: parkingEntries[0].exit_time,
-          status: parkingEntries[0].status,
-          actual_fee: parkingEntries[0].actual_fee,
-          calculated_fee: parkingEntries[0].calculated_fee
-        } : null
-      })
-
-      // ✅ FIX: Use actual database column names (actual_fee/calculated_fee) not parking_fee
-      const totalRevenue = parkingEntries?.reduce((sum, entry) => {
-        // Only count exited/completed sessions for revenue
-        if (entry.status === 'Exited' || entry.exit_time) {
-          const feeAmount = entry.actual_fee || entry.calculated_fee || 0
-          console.log('📊 SHIFT OVERVIEW - Revenue entry:', {
-            id: entry.id,
-            status: entry.status,
-            actual_fee: entry.actual_fee,
-            calculated_fee: entry.calculated_fee,
-            feeAmount,
-            previousSum: sum
-          })
-          return sum + feeAmount
-        }
-        return sum
-      }, 0) || 0
-
-      console.log('📊 SHIFT OVERVIEW - Final revenue:', totalRevenue)
-
-      const vehiclesProcessed = parkingEntries?.length || 0
-
-      const currentlyParked = parkingEntries?.filter(entry =>
-        entry.status === 'Active'
-      ).length || 0
-
-      const completedSessions = parkingEntries?.filter(entry =>
-        entry.exit_time
-      ) || []
-
-      const averageSessionTime = completedSessions.length > 0
-        ? completedSessions.reduce((sum, entry) => {
-            const entryTime = new Date(entry.entry_time).getTime()
-            const exitTime = new Date(entry.exit_time!).getTime()
-            return sum + (exitTime - entryTime)
-          }, 0) / (completedSessions.length * 1000 * 60) // Convert to minutes
-        : 0
-
-      setTodayStats({
-        totalRevenue,
-        vehiclesProcessed,
-        currentlyParked,
-        averageSessionTime: Math.round(averageSessionTime)
-      })
-    } catch (error) {
-      console.error('Error fetching today statistics:', error)
-    }
-  }, [linkingState.activeShiftId])
+  // ✅ REMOVED: All data fetching - now comes from shiftData prop
 
   // Calculate shift duration
   const calculateDuration = useCallback((startTime: string): string => {
@@ -182,7 +57,7 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   }, [])
 
-  // Update duration every second
+  // ✅ SIMPLIFIED: Only update shift duration timer (UI-only state)
   useEffect(() => {
     if (!activeShift) return
 
@@ -196,11 +71,8 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
     return () => clearInterval(interval)
   }, [activeShift, calculateDuration])
 
-  // Initialize data
-  useEffect(() => {
-    fetchActiveShift()
-    fetchTodayStats()
-  }, [fetchActiveShift, fetchTodayStats])
+  // ✅ REMOVED: Real-time subscriptions - handled by useShiftData hook
+  // ✅ REMOVED: Initialize data - handled by useShiftData hook
 
   // Format currency
   const formatCurrency = (amount: number): string => {
@@ -240,8 +112,8 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
         </div>
 
         {activeShift ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
               <label className="text-sm font-medium text-gray-500">Employee</label>
               <div className="text-lg font-semibold text-gray-900">
                 {activeShift.employee_name}
@@ -251,7 +123,7 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
               <label className="text-sm font-medium text-gray-500">Started At</label>
               <div className="text-lg font-semibold text-gray-900">
                 {formatTime(activeShift.shift_start_time)}
@@ -261,17 +133,31 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 bg-blue-50 p-4 rounded-lg">
               <label className="text-sm font-medium text-gray-500">Duration</label>
               <div className="text-2xl font-mono font-bold text-blue-600" aria-live="polite">
                 {shiftDuration}
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 bg-green-50 p-4 rounded-lg">
               <label className="text-sm font-medium text-gray-500">Opening Cash</label>
               <div className="text-lg font-semibold text-green-600">
                 {formatCurrency(activeShift.opening_cash_amount ?? 0)}
+              </div>
+            </div>
+
+            <div className={`space-y-2 p-4 rounded-lg ${
+              currentCash >= 0 ? 'bg-green-50' : 'bg-red-50'
+            }`}>
+              <label className="text-sm font-medium text-gray-500">Current Cash on Hand</label>
+              <div className={`text-lg font-semibold ${
+                currentCash >= 0 ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {formatCurrency(currentCash)}
+              </div>
+              <div className="text-xs text-gray-500">
+                Opening + Cash - Expenses - Deposits
               </div>
             </div>
           </div>
@@ -290,17 +176,34 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-6">Today's Performance</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-6">
+          {/* Cash Revenue - affects employee's cash on hand */}
+          <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 border-2 border-green-200">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-500 rounded-lg">
+              <div className="p-2 bg-green-500 rounded-lg">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-blue-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-blue-900">{formatCurrency(todayStats.totalRevenue)}</p>
+                <p className="text-sm font-medium text-green-600">Cash Revenue</p>
+                <p className="text-2xl font-bold text-green-900">{formatCurrency(todayStats.cashRevenue)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Digital Revenue - goes directly to owner */}
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-blue-600">Digital Revenue</p>
+                <p className="text-2xl font-bold text-blue-900">{formatCurrency(todayStats.digitalRevenue)}</p>
+                <p className="text-xs text-blue-500">Direct to owner</p>
               </div>
             </div>
           </div>
@@ -347,7 +250,94 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Total Expenses - Standalone Card */}
+        {activeShift && (
+          <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-xl p-6 border-2 border-red-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="p-3 bg-red-500 rounded-lg">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-red-600">Total Expenses</p>
+                  <p className="text-3xl font-bold text-red-900">{formatCurrency(totalExpenses)}</p>
+                </div>
+              </div>
+              {expenseCount > 0 && (
+                <div className="text-right">
+                  <p className="text-sm text-red-600 font-medium">{expenseCount} {expenseCount === 1 ? 'expense' : 'expenses'}</p>
+                  <p className="text-xs text-red-500">See breakdown below</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Expense Metrics */}
+      {activeShift && expenseCount > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">Expense Breakdown</h2>
+            <div className="text-sm text-gray-600">
+              {expenseCount} {expenseCount === 1 ? 'expense' : 'expenses'} recorded
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {Object.entries(expensesByCategory).map(([category, amount]) => {
+              const categoryColors = {
+                'Maintenance': { bg: 'from-orange-50 to-orange-100', icon: 'bg-orange-500', text: 'text-orange-600', textBold: 'text-orange-900' },
+                'Supplies': { bg: 'from-teal-50 to-teal-100', icon: 'bg-teal-500', text: 'text-teal-600', textBold: 'text-teal-900' },
+                'Staff': { bg: 'from-indigo-50 to-indigo-100', icon: 'bg-indigo-500', text: 'text-indigo-600', textBold: 'text-indigo-900' },
+                'Utilities': { bg: 'from-cyan-50 to-cyan-100', icon: 'bg-cyan-500', text: 'text-cyan-600', textBold: 'text-cyan-900' },
+                'Other': { bg: 'from-gray-50 to-gray-100', icon: 'bg-gray-500', text: 'text-gray-600', textBold: 'text-gray-900' }
+              }
+
+              const colors = categoryColors[category as keyof typeof categoryColors] || categoryColors['Other']
+
+              return (
+                <div key={category} className={`bg-gradient-to-r ${colors.bg} rounded-lg p-4 border-2 ${colors.text.replace('text-', 'border-')}`}>
+                  <div className="flex items-center">
+                    <div className={`p-2 ${colors.icon} rounded-lg flex-shrink-0`}>
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                    <div className="ml-3 min-w-0 flex-1">
+                      <p className={`text-xs font-medium ${colors.text} truncate`}>{category}</p>
+                      <p className={`text-lg font-bold ${colors.textBold}`}>{formatCurrency(amount)}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Cash on Hand</span>
+              <div className="text-right">
+                <div className={`text-lg font-bold ${currentCash >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(currentCash)}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Opening {formatCurrency(activeShift.opening_cash_amount ?? 0)} +
+                  Cash {formatCurrency(todayStats.cashRevenue)} -
+                  Expenses {formatCurrency(totalExpenses)} -
+                  Deposits {formatCurrency(totalCashDeposits)}
+                </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  Digital {formatCurrency(todayStats.digitalRevenue)} (direct to owner)
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Shift Linking Metrics */}
       {linkingMetrics && (
@@ -403,21 +393,30 @@ export const ShiftOverviewTab: React.FC<ShiftOverviewTabProps> = ({
         <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <button
+            onClick={() => onNavigateToReports?.()}
+            className="flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
             View Reports
           </button>
 
-          <button className="flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <button
+            onClick={() => onNavigateToOperations?.()}
+            className="flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
             </svg>
             Handover Shift
           </button>
 
-          <button className="flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+          <button
+            onClick={() => onNavigateToSettings?.()}
+            className="flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
             </svg>

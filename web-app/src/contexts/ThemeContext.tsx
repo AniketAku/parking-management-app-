@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useThemeSettings } from '../hooks/useSettings'
 import type { Theme, MotionPreference } from '../hooks/useTheme'
 import { logger } from '../utils/enhancedLogger'
+import { log } from '../utils/secureLogger'
 
 interface ThemeContextType {
   preferences: {
@@ -153,7 +154,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         await updateSetting('theme_mode', 'light')
       }
     } catch (error) {
-      console.error('Failed to update theme setting:', error)
+      log.error('Failed to update theme setting', error)
     }
   }, [updateSetting])
 
@@ -182,7 +183,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       await updateSetting('dark_mode', false)
       await updateSetting('theme_mode', 'auto')
     } catch (error) {
-      console.error('Failed to reset theme settings:', error)
+      log.error('Failed to reset theme settings', error)
     }
   }, [updateSetting])
 

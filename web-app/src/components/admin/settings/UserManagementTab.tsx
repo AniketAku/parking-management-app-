@@ -21,6 +21,7 @@ import { SettingsSection } from './SettingsSection'
 import { SettingsField } from './SettingsField'
 import { CreateUserModal } from './CreateUserModal'
 import { UserService, type UserProfile } from '../../../services/userService'
+import { log } from '../../../utils/secureLogger'
 import type { UserManagementSettings } from '../../../types/settings'
 
 interface UserManagementTabProps {
@@ -57,9 +58,9 @@ export function UserManagementTab({
     try {
       // Here you would typically save to backend
       await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-      console.log('User management settings saved:', settings)
+      log.info('User management settings saved', settings)
     } catch (error) {
-      console.error('Failed to save user management settings:', error)
+      log.error('Failed to save user management settings', error)
     } finally {
       setLoading(false)
     }
@@ -99,7 +100,7 @@ export function UserManagementTab({
       setPendingUsers(pending)
       setActiveUsers(active)
     } catch (error) {
-      console.error('Failed to load users:', error)
+      log.error('Failed to load users', error)
     } finally {
       setLoadingUsers(false)
     }
@@ -114,7 +115,7 @@ export function UserManagementTab({
         alert(result.message)
       }
     } catch (error) {
-      console.error('Failed to approve user:', error)
+      log.error('Failed to approve user', error)
       alert('Failed to approve user')
     }
   }
@@ -131,7 +132,7 @@ export function UserManagementTab({
         alert(result.message)
       }
     } catch (error) {
-      console.error('Failed to reject user:', error)
+      log.error('Failed to reject user', error)
       alert('Failed to reject user')
     }
   }
@@ -145,7 +146,7 @@ export function UserManagementTab({
         alert(result.message)
       }
     } catch (error) {
-      console.error('Failed to update user role:', error)
+      log.error('Failed to update user role', error)
       alert('Failed to update user role')
     }
   }

@@ -5,6 +5,7 @@
 
 import { UserService, type UserProfile } from '../services/userService'
 import { passwordPolicyService } from '../services/passwordPolicyService'
+import { log } from '../utils/secureLogger'
 
 export interface EmailCleanupTestResults {
   passed: number
@@ -257,7 +258,7 @@ function isValidPhoneFormat(phone: string): boolean {
  * Run all email cleanup tests
  */
 export async function runEmailCleanupTests(): Promise<EmailCleanupTestResults> {
-  console.log('🧪 Running Email Cleanup Test Suite...')
+  log.info('Running Email Cleanup Test Suite')
   
   const tests = [
     { name: 'Phone Validation', test: testPhoneValidation },
@@ -274,8 +275,8 @@ export async function runEmailCleanupTests(): Promise<EmailCleanupTestResults> {
     details: []
   }
 
-  for (const { name, test } of tests) {
-    console.log(`  Testing: ${name}...`)
+  for (const { name, test} of tests) {
+    log.info('Testing', { testName: name })
     
     try {
       const result = await test()
@@ -288,10 +289,10 @@ export async function runEmailCleanupTests(): Promise<EmailCleanupTestResults> {
       
       if (result.result === 'PASS') {
         results.passed++
-        console.log(`    ✅ ${name}: ${result.message}`)
+        log.success('Test passed', { testName: name, message: result.message })
       } else {
         results.failed++
-        console.log(`    ❌ ${name}: ${result.message}`)
+        log.error('Test failed', { testName: name, message: result.message })
       }
     } catch (error) {
       results.failed++
@@ -301,7 +302,7 @@ export async function runEmailCleanupTests(): Promise<EmailCleanupTestResults> {
         result: 'FAIL',
         message: `Test execution failed: ${errorMessage}`
       })
-      console.log(`    ❌ ${name}: Test execution failed: ${errorMessage}`)
+      log.error('Test execution failed', { testName: name, error: errorMessage })
     }
   }
 
@@ -363,31 +364,27 @@ export function generateTestReport(results: EmailCleanupTestResults): string {
  * Interactive test runner for browser console
  */
 export async function runInteractiveTests(): Promise<void> {
-  console.log('🚀 Starting Interactive Email Cleanup Tests...')
+  log.info('Starting Interactive Email Cleanup Tests')
   
   const results = await runEmailCleanupTests()
   const report = generateTestReport(results)
   
-  console.log('\n' + '='.repeat(50))
-  console.log('📊 TEST SUMMARY')
-  console.log('='.repeat(50))
-  console.log(`Total Tests: ${results.total}`)
-  console.log(`Passed: ${results.passed}`)
-  console.log(`Failed: ${results.failed}`)
-  console.log(`Success Rate: ${Math.round((results.passed / results.total) * 100)}%`)
-  console.log('='.repeat(50))
+  log.info('TEST SUMMARY', {
+    totalTests: results.total,
+    passed: results.passed,
+    failed: results.failed,
+    successRate: `${Math.round((results.passed / results.total) * 100)}%`
+  })
   
   if (results.failed > 0) {
-    console.log('\n❌ FAILED TESTS:')
-    results.details
+    const failedTests = results.details
       .filter(d => d.result === 'FAIL')
-      .forEach(d => console.log(`  - ${d.test}: ${d.message}`))
+      .map(d => ({ test: d.test, message: d.message }))
+    log.error('FAILED TESTS', { failed: failedTests })
   } else {
-    console.log('\n🎉 ALL TESTS PASSED!')
-    console.log('Email cleanup is complete and ready for production!')
+    log.success('ALL TESTS PASSED', { message: 'Email cleanup is complete and ready for production' })
   }
-  
+
   // Save report to console for copy/paste
-  console.log('\n📋 Full Report (copy to save):')
-  console.log(report)
+  log.info('Full Report (copy to save)', { report })
 }

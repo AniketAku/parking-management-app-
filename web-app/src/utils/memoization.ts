@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useMemo, useRef, useEffect } from 'react'
+import { log } from './secureLogger'
 
 /**
  * Deep comparison function for React.memo
@@ -161,7 +162,7 @@ export const useExpensiveCalculation = <T, K>(
     const result = calculation(input)
     // Performance logging only in development mode
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🧮 Expensive calculation triggered`)
+      log.debug('Expensive calculation triggered')
     }
     return result
   }, [input, ...dependencies])
@@ -193,7 +194,10 @@ export const useRenderCount = (componentName: string) => {
   
   useEffect(() => {
     renderCount.current += 1
-    console.log(`🔄 ${componentName} rendered ${renderCount.current} times`)
+    log.debug('Component render count', {
+      component: componentName,
+      count: renderCount.current
+    })
   })
 
   return renderCount.current
@@ -233,10 +237,13 @@ export const useWhyDidYouUpdate = (name: string, props: Record<string, any>) => 
       })
       
       if (Object.keys(changedProps).length) {
-        console.log(`🔍 [${name}] Props changed:`, changedProps)
+        log.debug('Component props changed', {
+          component: name,
+          changedProps
+        })
       }
     }
-    
+
     previous.current = props
   })
 }

@@ -3,6 +3,7 @@
  * Integrates with existing printer infrastructure and queue management
  */
 
+import { log } from '../utils/secureLogger'
 import type { ParkingTicketData, PrintResult } from '../components/printing/PrintButton'
 import type { PrinterProfile } from '../types/printerConfig'
 import type { ParkingEntry } from '../types'
@@ -114,9 +115,9 @@ class PrintService {
           error: result.error
         }
       }
-      
+
     } catch (error) {
-      console.error('Print service error:', error)
+      log.error('Print service error', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown print error',
@@ -146,9 +147,9 @@ class PrintService {
       
       // Fallback to default printer
       return activeProfiles.find(p => p.isDefault) || activeProfiles[0] || null
-      
+
     } catch (error) {
-      console.error('Failed to get active printer:', error)
+      log.error('Failed to get active printer', error)
       return null
     }
   }
@@ -186,14 +187,13 @@ class PrintService {
       // 2. Format the ticket data according to printer capabilities
       // 3. Send the print command using the appropriate protocol (ESC/POS, etc.)
       // 4. Handle printer-specific responses and errors
-      
-      console.log('Executing print job:', {
+
+      log.debug('Executing print job', {
         jobId: printJob.id,
         printer: printerProfile.name,
-        type: printerProfile.type,
-        data: printJob.data
+        type: printerProfile.type
       })
-      
+
       // Simulate print delay
       await new Promise(resolve => setTimeout(resolve, 1500))
       
@@ -206,12 +206,12 @@ class PrintService {
       
       // Simulate successful print
       return { success: true }
-      
+
     } catch (error) {
-      console.error('Print job execution failed:', error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Print execution failed' 
+      log.error('Print job execution failed', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Print execution failed'
       }
     }
   }
@@ -222,7 +222,7 @@ class PrintService {
       // For now, simulate based on printer profile status
       return printerProfile.isActive
     } catch (error) {
-      console.error('Failed to check printer status:', error)
+      log.error('Failed to check printer status', error)
       return false
     }
   }
@@ -244,9 +244,9 @@ class PrintService {
         usage: updatedUsage,
         updatedAt: new Date()
       })
-      
+
     } catch (error) {
-      console.error('Failed to update printer usage:', error)
+      log.error('Failed to update printer usage', error)
     }
   }
 
@@ -270,13 +270,13 @@ class PrintService {
     try {
       return await this.queueService.getAvailablePrinters()
     } catch (error) {
-      console.error('Failed to get available printers:', error)
+      log.error('Failed to get available printers', error)
       // Fallback to config service
       try {
         const profiles = await printerConfigService.getAllPrinterProfiles()
         return profiles.filter(p => p.isActive)
       } catch (fallbackError) {
-        console.error('Fallback printer fetch failed:', fallbackError)
+        log.error('Fallback printer fetch failed', fallbackError)
         return []
       }
     }
@@ -298,7 +298,7 @@ class PrintService {
       const printSettings = await this.getPrintSettings()
       return ticketType === 'entry' ? printSettings.autoPrintEntry : printSettings.autoPrintExit
     } catch (error) {
-      console.error('Failed to check auto-print settings:', error)
+      log.error('Failed to check auto-print settings', error)
       return false
     }
   }
@@ -315,7 +315,7 @@ class PrintService {
         ...settings
       }
     } catch (error) {
-      console.error('Failed to load print settings:', error)
+      log.error('Failed to load print settings', error)
       return {
         autoPrintEntry: false,
         autoPrintExit: false,
@@ -366,7 +366,7 @@ class PrintService {
     try {
       return await bluetoothPrinterService.scanForBluetoothPrinters()
     } catch (error) {
-      console.error('Bluetooth scanner failed:', error)
+      log.error('Bluetooth scanner failed', error)
       throw error
     }
   }
@@ -376,7 +376,7 @@ class PrintService {
       await bluetoothConnectionManager.forceReconnect(deviceId)
       return true
     } catch (error) {
-      console.error('Bluetooth connection failed:', error)
+      log.error('Bluetooth connection failed', error)
       return false
     }
   }
@@ -416,24 +416,24 @@ class PrintService {
       }
 
       const result = await bluetoothPrinterService.printViaBluetoothESCPOS(deviceId, escposData)
-      
+
       if (result.success) {
-        console.log(`Bluetooth print successful for device ${deviceId}`)
+        log.success('Bluetooth print successful', { deviceId })
       }
-      
+
       return result
     } catch (error) {
-      console.error('Bluetooth ESC/POS print failed:', error)
-      
+      log.error('Bluetooth ESC/POS print failed', error)
+
       // Handle error through Bluetooth error handler
       const bluetoothError = error as any
       bluetoothError.type = 'transmission'
       bluetoothError.deviceId = deviceId
       bluetoothError.bluetoothSpecific = true
       bluetoothError.recoverable = true
-      
+
       const recoveryPlan = bluetoothErrorHandler.handleBluetoothError(bluetoothError)
-      
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Bluetooth print failed',
@@ -490,7 +490,7 @@ class PrintService {
         return await this.printTicket(ticketData, ticketType, options?.copies, options)
       }
     } catch (error) {
-      console.error('Print to device failed:', error)
+      log.error('Print to device failed', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Print failed'

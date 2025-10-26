@@ -2,6 +2,7 @@
 // Service Worker registration, update handling, and PWA features
 
 import { toast } from 'react-hot-toast'
+import { log } from '../utils/secureLogger'
 
 export interface PWAInstallPrompt extends Event {
   prompt(): Promise<void>
@@ -35,7 +36,7 @@ class PWAService {
       event.preventDefault()
       this.installPrompt = event as PWAInstallPrompt
       this.emit('installPromptAvailable', true)
-      console.log('📱 PWA install prompt is available')
+      log.success('PWA install prompt is available')
     })
 
     // Listen for app installation
@@ -43,20 +44,20 @@ class PWAService {
       this.installPrompt = null
       this.emit('installed', true)
       toast.success('🎉 App installed successfully!')
-      console.log('📱 PWA has been installed')
+      log.success('PWA has been installed')
     })
 
     // Listen for online/offline status
     window.addEventListener('online', () => {
       this.emit('onlineStatusChange', true)
       toast.success('🌐 Back online')
-      console.log('🌐 App is back online')
+      log.success('App is back online')
     })
 
     window.addEventListener('offline', () => {
       this.emit('onlineStatusChange', false)
       toast.error('📡 You are offline', { duration: 4000 })
-      console.log('📡 App is offline')
+      log.warn('App is offline')
     })
 
     // Listen for visibility changes (app focus)
@@ -70,7 +71,7 @@ class PWAService {
   // Register service worker
   async registerServiceWorker(): Promise<boolean> {
     if (!('serviceWorker' in navigator)) {
-      console.warn('Service Worker not supported')
+      log.warn('Service Worker not supported')
       return false
     }
 
@@ -109,11 +110,11 @@ class PWAService {
         this.sendMessageToSW({ type: 'CLIENT_READY' })
       }
 
-      console.log('✅ Service Worker registered successfully')
+      log.success('Service Worker registered successfully')
       return true
 
     } catch (error) {
-      console.error('❌ Service Worker registration failed:', error)
+      log.error('Service Worker registration failed', error)
       return false
     }
   }
@@ -177,30 +178,30 @@ class PWAService {
     try {
       await this.serviceWorkerRegistration.update()
     } catch (error) {
-      console.log('Update check failed:', error)
+      log.debug('Update check failed', error)
     }
   }
 
   // Install PWA
   async installPWA(): Promise<boolean> {
     if (!this.installPrompt) {
-      console.log('Install prompt not available')
+      log.debug('Install prompt not available')
       return false
     }
 
     try {
       await this.installPrompt.prompt()
       const choice = await this.installPrompt.userChoice
-      
+
       if (choice.outcome === 'accepted') {
-        console.log('✅ User accepted PWA installation')
+        log.success('User accepted PWA installation')
         return true
       } else {
-        console.log('❌ User dismissed PWA installation')
+        log.debug('User dismissed PWA installation')
         return false
       }
     } catch (error) {
-      console.error('PWA installation failed:', error)
+      log.error('PWA installation failed', error)
       return false
     }
   }
@@ -235,7 +236,7 @@ class PWAService {
   // Request notification permission
   async requestNotificationPermission(): Promise<NotificationPermission> {
     if (!('Notification' in window)) {
-      console.warn('Notifications not supported')
+      log.warn('Notifications not supported')
       return 'denied'
     }
 
@@ -253,7 +254,7 @@ class PWAService {
   // Show local notification
   async showNotification(title: string, options: NotificationOptions = {}): Promise<void> {
     if (!this.serviceWorkerRegistration) {
-      console.warn('Service worker not available for notifications')
+      log.warn('Service worker not available for notifications')
       return
     }
 
@@ -337,10 +338,10 @@ class PWAService {
 
     try {
       await this.serviceWorkerRegistration.unregister()
-      console.log('Service worker unregistered')
+      log.success('Service worker unregistered')
       return true
     } catch (error) {
-      console.error('Failed to unregister service worker:', error)
+      log.error('Failed to unregister service worker', error)
       return false
     }
   }

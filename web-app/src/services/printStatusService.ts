@@ -1,12 +1,13 @@
-import type { 
-  PrintJob, 
-  PrintQueueStatus, 
-  PrinterStatus, 
+import type {
+  PrintJob,
+  PrintQueueStatus,
+  PrinterStatus,
   PrintStatistics,
-  PrintQueueEvents 
+  PrintQueueEvents
 } from '../types/printQueue'
 import printService from './printService'
 import { printQueueManager } from './printQueueService'
+import { log } from '../utils/secureLogger'
 
 export interface PrintStatusUpdate {
   type: 'job' | 'queue' | 'printer' | 'statistics'
@@ -81,7 +82,7 @@ export class PrintStatusService {
           timestamp: new Date()
         })
       } catch (error) {
-        console.error('Failed to refresh print statistics:', error)
+        log.error('Failed to refresh print statistics', error)
       }
     }, this.refreshInterval)
   }
@@ -92,7 +93,7 @@ export class PrintStatusService {
         try {
           subscription.callback(update)
         } catch (error) {
-          console.error('Subscriber notification error:', error)
+          log.error('Subscriber notification error', error)
         }
       }
     }
@@ -157,7 +158,7 @@ export class PrintStatusService {
         statistics
       }
     } catch (error) {
-      console.error('Failed to get current status:', error)
+      log.error('Failed to get current status', error)
       throw error
     }
   }
@@ -166,7 +167,7 @@ export class PrintStatusService {
     try {
       return await printService.getQueueStatus()
     } catch (error) {
-      console.error('Failed to get queue status:', error)
+      log.error('Failed to get queue status', error)
       throw error
     }
   }
@@ -196,7 +197,7 @@ export class PrintStatusService {
         } as PrinterStatus
       }))
     } catch (error) {
-      console.error('Failed to get printer statuses:', error)
+      log.error('Failed to get printer statuses', error)
       throw error
     }
   }
@@ -212,7 +213,7 @@ export class PrintStatusService {
       this.statusCache.set('statistics', { ...statistics, timestamp: Date.now() })
       return statistics
     } catch (error) {
-      console.error('Failed to get print statistics:', error)
+      log.error('Failed to get print statistics', error)
       throw error
     }
   }
@@ -277,7 +278,7 @@ export class PrintStatusService {
         uptime
       }
     } catch (error) {
-      console.error('Error calculating print statistics:', error)
+      log.error('Error calculating print statistics', error)
       throw error
     }
   }

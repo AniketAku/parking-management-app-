@@ -16,6 +16,7 @@ import type {
 } from '../types/thermalPrinter';
 import { thermalPrinterManager } from './thermalPrinterService';
 import { createEntryTicketData, createExitReceiptData, createThermalTicketData } from '../utils/ticketHelpers';
+import { log } from '../utils/secureLogger';
 
 /**
  * Enhanced print job processor with thermal printer support
@@ -169,7 +170,7 @@ export class ThermalPrintJobProcessor {
           return createEntryTicketData(entry);
       }
     } catch (error) {
-      console.error('Error converting job data to thermal ticket:', error);
+      log.error('Error converting job data to thermal ticket', error);
       return null;
     }
   }

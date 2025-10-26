@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
+import { log } from '../utils/secureLogger';
 
 export interface CacheEntry<T = any> {
   data: T;
@@ -139,7 +140,7 @@ export class PerformanceOptimizationService {
       return null;
     } catch (error) {
       this.errorCounter++;
-      console.error('Cache get error:', error);
+      log.error('Cache get error', error);
       this.recordResponseTime(performance.now() - startTime);
       return null;
     }
@@ -215,7 +216,7 @@ export class PerformanceOptimizationService {
             await this.set(key, data, this.config.cacheTTL / 2); // Shorter TTL for prefetched data
           }
         } catch (error) {
-          console.warn('Prefetch failed for key:', key, error);
+          log.warn('Prefetch failed for key', { key, error });
         }
       });
 
@@ -289,7 +290,7 @@ export class PerformanceOptimizationService {
           await new Promise(resolve => setTimeout(resolve, 0));
         }
       } catch (error) {
-        console.error('Streaming error at offset', offset, error);
+        log.error('Streaming error at offset', { offset, error });
         throw error;
       }
     }
@@ -328,7 +329,7 @@ export class PerformanceOptimizationService {
       this.config.cacheTTL = Math.max(60000, this.config.cacheTTL * 0.8);
     }
 
-    console.log('Configuration optimized:', this.config);
+    log.info('Configuration optimized', { config: this.config });
   }
 
   /**
@@ -453,7 +454,7 @@ export class PerformanceOptimizationService {
     try {
       await this.executeBatchOperations(batchToProcess);
     } catch (error) {
-      console.error('Batch processing error:', error);
+      log.error('Batch processing error', error);
 
       // Retry failed operations
       const retriableOps = batchToProcess
@@ -479,7 +480,7 @@ export class PerformanceOptimizationService {
       try {
         await this.executeBatchGroup(ops);
       } catch (error) {
-        console.error(`Batch group execution failed for ${key}:`, error);
+        log.error('Batch group execution failed', { key, error });
         throw error;
       }
     }
@@ -518,7 +519,7 @@ export class PerformanceOptimizationService {
           throw new Error(`Unsupported batch operation type: ${type}`);
       }
     } catch (error) {
-      console.error(`Batch execution failed for ${table} ${type}:`, error);
+      log.error('Batch execution failed', { table, type, error });
       throw error;
     }
   }
@@ -618,7 +619,7 @@ export class PerformanceOptimizationService {
       this.responseTimeBuffer = this.responseTimeBuffer.slice(-50);
     }
 
-    console.log('Memory cleanup completed');
+    log.info('Memory cleanup completed');
   }
 
   /**

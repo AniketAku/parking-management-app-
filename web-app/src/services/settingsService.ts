@@ -7,6 +7,7 @@
 import { supabase } from '../lib/supabase'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import type { SettingCategory } from '../types/settings'
+import { log } from '../utils/secureLogger'
 
 // ================================================
 // TYPE DEFINITIONS
@@ -118,13 +119,13 @@ class NewSettingsService {
         .limit(1)
 
       if (error) {
-        console.error(`Failed to get setting ${cacheKey}:`, error.message)
+        log.error('Failed to get setting', { cacheKey, error: error.message })
         if (options.throwOnError) throw error
         return null
       }
 
       if (!data || data.length === 0) {
-        console.warn(`Setting ${cacheKey} not found in database`)
+        log.warn('Setting not found in database', { cacheKey })
         return null
       }
 
@@ -134,10 +135,10 @@ class NewSettingsService {
       // Parse JSONB value and cache
       const value = this.parseJsonValue<T>(record.value)
       this.setCachedValue(cacheKey, value)
-      
+
       return value
     } catch (error) {
-      console.error(`Error getting setting ${cacheKey}:`, error)
+      log.error('Error getting setting', { cacheKey, error })
       if (options.throwOnError) throw error
       return null
     }
@@ -158,13 +159,13 @@ class NewSettingsService {
         .order('sort_order')
 
       if (error) {
-        console.error(`Failed to get ${category} settings:`, error.message)
+        log.error('Failed to get category settings', { category, error: error.message })
         if (options.throwOnError) throw error
         return {}
       }
 
       if (!data || data.length === 0) {
-        console.warn(`No settings found for category ${category}`)
+        log.warn('No settings found for category', { category })
         return {}
       }
 
@@ -181,10 +182,10 @@ class NewSettingsService {
         }
       })
 
-      console.log(`✅ Successfully loaded ${data.length} settings for category ${category}`)
+      log.success('Successfully loaded category settings', { category, count: data.length })
       return result as Partial<T>
     } catch (error) {
-      console.error(`Error getting ${category} settings:`, error)
+      log.error('Error getting category settings', { category, error })
       if (options.throwOnError) throw error
       return {}
     }
@@ -213,7 +214,7 @@ class NewSettingsService {
         .eq('key', key)
 
       if (error) {
-        console.error(`Failed to update setting ${category}.${key}:`, error.message)
+        log.error('Failed to update setting', { category, key, error: error.message })
         if (options.throwOnError) throw error
         return false
       }
@@ -223,10 +224,10 @@ class NewSettingsService {
       this.setCachedValue(cacheKey, value)
       this.notifySubscribers(category, { [key]: value })
 
-      console.log(`✅ Updated setting ${cacheKey}`)
+      log.success('Updated setting', { cacheKey })
       return true
     } catch (error) {
-      console.error(`Error updating setting ${category}.${key}:`, error)
+      log.error('Error updating setting', { category, key, error })
       if (options.throwOnError) throw error
       return false
     }
@@ -255,7 +256,7 @@ class NewSettingsService {
         })
 
       if (error) {
-        console.error(`Failed to update ${category} settings:`, error.message)
+        log.error('Failed to update category settings', { category, error: error.message })
         if (options.throwOnError) throw error
         return false
       }
@@ -266,10 +267,10 @@ class NewSettingsService {
       })
       this.notifySubscribers(category, settings)
 
-      console.log(`✅ Updated ${Object.keys(settings).length} settings in category ${category}`)
+      log.success('Updated category settings', { category, count: Object.keys(settings).length })
       return true
     } catch (error) {
-      console.error(`Error updating ${category} settings:`, error)
+      log.error('Error updating category settings', { category, error })
       if (options.throwOnError) throw error
       return false
     }
@@ -351,15 +352,15 @@ class NewSettingsService {
           filter: `category=eq.${category}`
         },
         (payload) => {
-          console.log(`📡 Settings changed in category ${category}:`, payload)
-          
+          log.debug('Settings changed in category', { category, payload })
+
           // Invalidate cache for changed setting
           if (payload.new && typeof payload.new === 'object') {
             const { key, value } = payload.new as { key: string; value: any }
             const cacheKey = `${category}.${key}`
             const parsedValue = this.parseJsonValue(value)
             this.setCachedValue(cacheKey, parsedValue)
-            
+
             // Notify subscribers
             this.notifySubscribers(category, { [key]: parsedValue })
           }
@@ -386,7 +387,7 @@ class NewSettingsService {
         try {
           callback(changedSettings)
         } catch (error) {
-          console.error(`Error in settings subscriber for ${category}:`, error)
+          log.error('Error in settings subscriber', { category, error })
         }
       })
     }

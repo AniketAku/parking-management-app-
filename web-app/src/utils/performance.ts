@@ -1,4 +1,5 @@
 import { onCLS, onINP, onFCP, onLCP, onTTFB } from 'web-vitals';
+import { log } from './secureLogger';
 
 export interface PerformanceMetrics {
   cls: number | null;
@@ -86,7 +87,7 @@ export class PerformanceMonitor {
         this.notifyListeners();
       });
     } catch (error) {
-      console.warn('Web vitals initialization failed:', error);
+      log.warn('Web vitals initialization failed', error);
     }
   }
 
@@ -119,7 +120,7 @@ export class PerformanceMonitor {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(report)
-      }).catch(console.error);
+      }).catch(error => log.error('Performance metrics reporting failed', error));
     }
 
     return report;
@@ -189,7 +190,7 @@ export class PerformanceMonitor {
     try {
       this.navigationObserver.observe({ entryTypes: ['navigation'] })
     } catch (error) {
-      console.warn('Navigation timing not supported:', error)
+      log.warn('Navigation timing not supported', error)
     }
   }
 
@@ -221,7 +222,7 @@ export class PerformanceMonitor {
     try {
       resourceObserver.observe({ entryTypes: ['resource'] })
     } catch (error) {
-      console.warn('Resource timing not supported:', error)
+      log.warn('Resource timing not supported', error)
     }
   }
 
@@ -277,7 +278,7 @@ export class PerformanceMonitor {
     try {
       observer.observe({ entryTypes: [type] })
     } catch (error) {
-      console.warn(`${type} monitoring not supported:`, error)
+      log.warn('Metric monitoring not supported', { type, error })
     }
   }
 
@@ -408,7 +409,11 @@ export class PerformanceMonitor {
       }
 
       if (exceeded) {
-        console.warn(`⚠️ Performance budget exceeded for ${key}: ${value} (budget: ${budgetValue})`)
+        log.warn('Performance budget exceeded', {
+          metric: key,
+          value,
+          budget: budgetValue
+        })
       }
     })
   }
@@ -426,7 +431,10 @@ export function measurePerformance(componentName: string) {
           super.componentDidMount()
         }
         const endTime = performance.now()
-        console.log(`🔍 ${componentName} mount time: ${endTime - startTime}ms`)
+        log.debug('Component mount time', {
+          component: componentName,
+          time: `${endTime - startTime}ms`
+        })
       }
 
       componentDidUpdate() {
@@ -435,7 +443,10 @@ export function measurePerformance(componentName: string) {
           super.componentDidUpdate()
         }
         const endTime = performance.now()
-        console.log(`🔍 ${componentName} update time: ${endTime - startTime}ms`)
+        log.debug('Component update time', {
+          component: componentName,
+          time: `${endTime - startTime}ms`
+        })
       }
     }
   }
@@ -449,7 +460,10 @@ export function usePerformanceMeasurement(componentName: string) {
     const startTime = performance.now()
     return () => {
       const endTime = performance.now()
-      console.log(`🔍 ${componentName} render time: ${endTime - startTime}ms`)
+      log.debug('Component render time', {
+        component: componentName,
+        time: `${endTime - startTime}ms`
+      })
     }
   })
 }
@@ -465,11 +479,18 @@ export async function measureAsyncOperation<T>(
   try {
     const result = await operation()
     const endTime = performance.now()
-    console.log(`⏱️ ${operationName} completed in ${endTime - startTime}ms`)
+    log.debug('Async operation completed', {
+      operation: operationName,
+      duration: `${endTime - startTime}ms`
+    })
     return result
   } catch (error) {
     const endTime = performance.now()
-    console.error(`❌ ${operationName} failed after ${endTime - startTime}ms:`, error)
+    log.error('Async operation failed', {
+      operation: operationName,
+      duration: `${endTime - startTime}ms`,
+      error
+    })
     throw error
   }
 }

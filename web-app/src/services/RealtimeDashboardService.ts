@@ -6,6 +6,7 @@
 import { supabase } from '../lib/supabase';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { Database } from '../types/database';
+import { log } from '../utils/secureLogger';
 
 type ShiftSession = Database['public']['Tables']['shift_sessions']['Row'];
 type ParkingSession = Database['public']['Tables']['parking_sessions']['Row'];
@@ -90,9 +91,9 @@ export class RealtimeDashboardService {
       this.startConnectionMonitoring();
       this.startMetricsUpdates();
 
-      console.log('Real-time dashboard service initialized successfully');
+      log.success('Real-time dashboard service initialized successfully');
     } catch (error) {
-      console.error('Error initializing real-time dashboard service:', error);
+      log.error('Error initializing real-time dashboard service', error);
       throw error;
     }
   }
@@ -115,7 +116,7 @@ export class RealtimeDashboardService {
         }
       )
       .subscribe((status) => {
-        console.log('Shift subscription status:', status);
+        log.debug('Shift subscription status', { status });
         this.updateConnectionStatus();
       });
 
@@ -140,7 +141,7 @@ export class RealtimeDashboardService {
         }
       )
       .subscribe((status) => {
-        console.log('Parking subscription status:', status);
+        log.debug('Parking subscription status', { status });
         this.updateConnectionStatus();
       });
 
@@ -165,7 +166,7 @@ export class RealtimeDashboardService {
         }
       )
       .subscribe((status) => {
-        console.log('Payment subscription status:', status);
+        log.debug('Payment subscription status', { status });
         this.updateConnectionStatus();
       });
 
@@ -338,7 +339,7 @@ export class RealtimeDashboardService {
         try {
           callback(update);
         } catch (error) {
-          console.error('Error in dashboard update callback:', error);
+          log.error('Error in dashboard update callback', error);
         }
       });
     });
@@ -415,7 +416,7 @@ export class RealtimeDashboardService {
         try {
           callback({ isConnected, quality });
         } catch (error) {
-          console.error('Error in connection status callback:', error);
+          log.error('Error in connection status callback', error);
         }
       });
 
@@ -467,12 +468,12 @@ export class RealtimeDashboardService {
         try {
           callback(metrics);
         } catch (error) {
-          console.error('Error in metrics callback:', error);
+          log.error('Error in metrics callback', error);
         }
       });
 
     } catch (error) {
-      console.error('Error refreshing dashboard metrics:', error);
+      log.error('Error refreshing dashboard metrics', error);
     }
   }
 
@@ -597,7 +598,7 @@ export class RealtimeDashboardService {
     this.metricsCallbacks.clear();
     this.connectionCallbacks.clear();
 
-    console.log('Real-time dashboard service destroyed');
+    log.info('Real-time dashboard service destroyed');
   }
 }
 

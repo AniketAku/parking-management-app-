@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '../lib/supabase'
+import { log } from '../utils/secureLogger'
 import type {
   PrinterProfile,
   DetectedPrinter,
@@ -94,7 +95,7 @@ class PrinterConfigService {
 
       return newProfile
     } catch (error) {
-      console.error('Failed to create printer profile:', error)
+      log.error('Failed to create printer profile', error)
       throw new Error(`Failed to create printer profile: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -154,7 +155,7 @@ class PrinterConfigService {
 
       return updatedProfile
     } catch (error) {
-      console.error('Failed to update printer profile:', error)
+      log.error('Failed to update printer profile', error)
       throw new Error(`Failed to update printer profile: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -190,7 +191,7 @@ class PrinterConfigService {
         .eq('printer_profile_id', id)
 
     } catch (error) {
-      console.error('Failed to delete printer profile:', error)
+      log.error('Failed to delete printer profile', error)
       throw new Error(`Failed to delete printer profile: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -224,7 +225,7 @@ class PrinterConfigService {
       this.profileCache.set(id, profile)
       return profile
     } catch (error) {
-      console.error('Failed to get printer profile:', error)
+      log.error('Failed to get printer profile', error)
       return null
     }
   }
@@ -257,7 +258,7 @@ class PrinterConfigService {
 
       return profiles
     } catch (error) {
-      console.error('Failed to get printer profiles:', error)
+      log.error('Failed to get printer profiles', error)
       throw new Error(`Failed to get printer profiles: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -302,10 +303,10 @@ class PrinterConfigService {
       
       // Cache results
       this.discoveryCache.set(cacheKey, uniquePrinters)
-      
+
       return uniquePrinters
     } catch (error) {
-      console.error('Printer discovery failed:', error)
+      log.error('Printer discovery failed', error)
       return []
     }
   }
@@ -345,7 +346,7 @@ class PrinterConfigService {
 
         return printers
       } catch (error) {
-        console.warn('USB printer discovery failed:', error)
+        log.warn('USB printer discovery failed', error)
         return []
       }
     }
@@ -380,7 +381,7 @@ class PrinterConfigService {
 
       return this.deduplicatePrinters(printers)
     } catch (error) {
-      console.warn('Network printer discovery failed:', error)
+      log.warn('Network printer discovery failed', error)
       return []
     }
   }
@@ -437,7 +438,7 @@ class PrinterConfigService {
             isOnline: device.gatt?.connected || false
           }))
       } catch (error) {
-        console.warn('Bluetooth printer discovery failed:', error)
+        log.warn('Bluetooth printer discovery failed', error)
         return []
       }
     }
@@ -462,7 +463,7 @@ class PrinterConfigService {
           isOnline: port.readable && port.writable
         }))
       } catch (error) {
-        console.warn('Serial printer discovery failed:', error)
+        log.warn('Serial printer discovery failed', error)
         return []
       }
     }
@@ -647,7 +648,7 @@ class PrinterConfigService {
       // Clear cache to force reload
       this.profileCache.clear()
     } catch (error) {
-      console.error('Failed to set default printer:', error)
+      log.error('Failed to set default printer', error)
       throw new Error(`Failed to set default printer: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -665,7 +666,7 @@ class PrinterConfigService {
 
       return this.mapDatabaseToProfile(data)
     } catch (error) {
-      console.error('Failed to get default printer:', error)
+      log.error('Failed to get default printer', error)
       return null
     }
   }
@@ -691,7 +692,7 @@ class PrinterConfigService {
 
       return data?.map(item => this.mapDatabaseToPrintJob(item)) || []
     } catch (error) {
-      console.error('Failed to get active print jobs:', error)
+      log.error('Failed to get active print jobs', error)
       return []
     }
   }
@@ -836,7 +837,7 @@ class PrinterConfigService {
 
       if (error) throw error
     } catch (error) {
-      console.error('Failed to update print defaults:', error)
+      log.error('Failed to update print defaults', error)
       throw new Error(`Failed to update print defaults: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -867,7 +868,7 @@ class PrinterConfigService {
 
       return data.setting_value as PrintDefaults
     } catch (error) {
-      console.error('Failed to get print defaults:', error)
+      log.error('Failed to get print defaults', error)
       throw new Error(`Failed to get print defaults: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -981,7 +982,7 @@ class PrinterConfigService {
 
       return assignment
     } catch (error) {
-      console.error('Failed to assign printer to location:', error)
+      log.error('Failed to assign printer to location', error)
       throw new Error(`Failed to assign printer: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }

@@ -4,6 +4,7 @@
  */
 
 import { passwordPolicyService } from '../services/passwordPolicyService'
+import { log } from '../utils/secureLogger'
 
 export interface MigrationUser {
   username: string
@@ -77,8 +78,9 @@ export async function executeMigration(): Promise<MigrationResult> {
   const migrationPlan = createMigrationPlan()
   const migratedUsers: MigrationUser[] = []
   const failedUsers: { username: string; error: string }[] = []
-  
-  console.log('🔄 Starting user migration to secure backend...')
+
+
+  log.info('Starting user migration to secure backend')
   
   for (const user of migrationPlan) {
     try {
@@ -111,12 +113,12 @@ export async function executeMigration(): Promise<MigrationResult> {
       }
       
       migratedUsers.push(user)
-      console.log(`✅ Migrated user: ${user.username}`)
+      log.success('Migrated user', { username: user.username })
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       failedUsers.push({ username: user.username, error: errorMessage })
-      console.error(`❌ Failed to migrate user ${user.username}:`, errorMessage)
+      log.error('Failed to migrate user', { username: user.username, error: errorMessage })
     }
   }
   
@@ -130,8 +132,9 @@ export async function executeMigration(): Promise<MigrationResult> {
       failed: failedUsers.length
     }
   }
-  
-  console.log('📊 Migration Summary:', result.summary)
+
+
+  log.info('Migration Summary', result.summary)
   
   return result
 }
@@ -240,41 +243,39 @@ export async function validateMigrationPrerequisites(): Promise<{
  * Interactive migration wizard
  */
 export async function runMigrationWizard(): Promise<void> {
-  console.log('🚀 User Migration Wizard Started')
-  
+  log.info('User Migration Wizard Started')
+
   // Step 1: Validate prerequisites
-  console.log('1️⃣ Validating prerequisites...')
+  log.info('Validating prerequisites')
   const prerequisites = await validateMigrationPrerequisites()
-  
+
   if (!prerequisites.valid) {
-    console.error('❌ Migration prerequisites not met:')
-    prerequisites.issues.forEach(issue => console.error(`  - ${issue}`))
+    log.error('Migration prerequisites not met', { issues: prerequisites.issues })
     return
   }
-  
-  console.log('✅ Prerequisites validated')
+
+  log.success('Prerequisites validated')
   
   // Step 2: Show migration plan
-  console.log('2️⃣ Migration Plan:')
   const plan = createMigrationPlan()
-  plan.forEach(user => {
-    console.log(`  - ${user.username} (${user.role})`)
+  log.info('Migration Plan', {
+    users: plan.map(u => ({ username: u.username, role: u.role }))
   })
   
   // Step 3: Execute migration
   const confirmed = confirm('Proceed with migration? This will create new user accounts.')
   if (!confirmed) {
-    console.log('❌ Migration cancelled by user')
+    log.warn('Migration cancelled by user')
     return
   }
-  
-  console.log('3️⃣ Executing migration...')
+
+  log.info('Executing migration')
   const result = await executeMigration()
-  
+
   // Step 4: Generate and display report
-  console.log('4️⃣ Generating report...')
+  log.info('Generating report')
   const report = generateMigrationReport(result)
-  console.log(report)
+  log.info('Migration Report', { report })
   
   // Step 5: Save report to file (in development environment)
   if (!import.meta.env.PROD) {
@@ -288,15 +289,15 @@ export async function runMigrationWizard(): Promise<void> {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      console.log('📄 Migration report saved to downloads')
+      log.success('Migration report saved to downloads')
     } catch {
-      console.warn('Could not save migration report to file')
+      log.warn('Could not save migration report to file')
     }
   }
   
   if (result.success) {
-    console.log('🎉 Migration completed successfully!')
+    log.success('Migration completed successfully')
   } else {
-    console.warn('⚠️ Migration completed with some failures. Check the report for details.')
+    log.warn('Migration completed with some failures. Check the report for details')
   }
 }

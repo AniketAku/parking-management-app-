@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { pwaService, type PWACapabilities } from '../services/pwaService'
+import { log } from '../utils/secureLogger'
 
 // Hook for PWA installation
 export const usePWAInstall = () => {
@@ -171,7 +172,7 @@ export const usePWANotifications = () => {
       await pwaService.showNotification(title, options)
       return true
     } catch (error) {
-      console.error('Failed to show notification:', error)
+      log.error('Failed to show notification', error)
       return false
     }
   }, [permission, requestPermission])

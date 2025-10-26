@@ -5,6 +5,7 @@ import { Card, CardHeader, CardContent } from '../ui'
 import { Button } from '../ui/Button'
 import toast from 'react-hot-toast'
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInHours, differenceInMinutes } from 'date-fns'
+import { log } from '../../utils/secureLogger'
 
 interface ShiftHistoryTabProps {
   linkingState: ShiftLinkingState
@@ -160,7 +161,7 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
             sessions_count = linkedSessions.length
           }
         } catch (error) {
-          console.warn('Failed to load shift revenue:', error)
+          log.warn('Failed to load shift revenue', error)
         }
 
         return {
@@ -179,7 +180,7 @@ export const ShiftHistoryTab: React.FC<ShiftHistoryTabProps> = ({
       setAvailableOperators(operators)
 
     } catch (error) {
-      console.error('Failed to load shift history:', error)
+      log.error('Failed to load shift history', error)
       toast.error('Failed to load shift history')
     } finally {
       setHistoryLoading(false)

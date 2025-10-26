@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client'
 import type { ParkingEntry, ParkingStatistics } from '../types'
 import { toast } from 'react-hot-toast'
 import { mockSocketServer } from './mockSocketServer'
+import { log } from '../utils/secureLogger'
 
 export interface ServerToClientEvents {
   // Parking entry events
@@ -87,7 +88,7 @@ class SocketService {
 
       // Use mock server for development if no real server URL
       if (this.useMockServer) {
-        console.log('🧪 Using mock Socket.IO server for development')
+        log.info('Using mock Socket.IO server for development')
         // Create a mock socket interface
         this.socket = this.createMockSocket()
         
@@ -112,7 +113,7 @@ class SocketService {
 
       // Connection successful
       this.socket.on('connect', () => {
-        console.log('✅ Socket connected:', this.socket?.id)
+        log.success('Socket connected', { socketId: this.socket?.id })
         this.isConnecting = false
         this.reconnectAttempts = 0
         
@@ -131,7 +132,7 @@ class SocketService {
 
       // Connection failed
       this.socket.on('connect_error', (error) => {
-        console.error('❌ Socket connection error:', error)
+        log.error('Socket connection error', error)
         this.isConnecting = false
         this.reconnectAttempts++
 
@@ -146,7 +147,7 @@ class SocketService {
 
       // Disconnection handling
       this.socket.on('disconnect', (reason) => {
-        console.log('🔌 Socket disconnected:', reason)
+        log.info('Socket disconnected', { reason })
         
         // Execute disconnection callbacks
         this.disconnectionCallbacks.forEach(callback => callback())
@@ -162,7 +163,7 @@ class SocketService {
 
       // Reconnection successful
       this.socket.on('reconnect', (attemptNumber) => {
-        console.log('🔄 Socket reconnected after', attemptNumber, 'attempts')
+        log.success('Socket reconnected', { attemptNumber })
         toast.success('🔄 Real-time updates reconnected', {
           duration: 2000,
           position: 'bottom-right'
@@ -182,7 +183,7 @@ class SocketService {
       on: (event: string, callback: Function) => mockSocketServer.on(event, callback),
       off: (event: string, callback: Function) => mockSocketServer.off(event, callback),
       emit: (event: string, ...args: any[]) => {
-        console.log('📤 Mock emit:', event, ...args)
+        log.debug('Mock emit', { event, args })
         // For client-to-server events, we could simulate server responses
         this.handleMockClientEvent(event, ...args)
       },
@@ -217,7 +218,7 @@ class SocketService {
     switch (event) {
       case 'join:dashboard':
       case 'join:reports':
-        console.log(`🏠 Mock: Joined room ${event.split(':')[1]}`)
+        log.debug('Mock: Joined room', { room: event.split(':')[1] })
         break
       case 'entry:create':
         // Simulate successful entry creation
@@ -268,7 +269,7 @@ class SocketService {
     // System notifications (only show toast for user actions, not automatic events)
     this.socket.on('system:notification', (message, type) => {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`📢 System notification [${type}]:`, message)
+        log.debug('System notification', { type, message })
       }
       
       // Show toast notifications for user-initiated actions only
@@ -304,11 +305,11 @@ class SocketService {
 
     // User connection updates
     this.socket.on('user:connected', (userCount) => {
-      console.log(`👥 Users online: ${userCount}`)
+      log.debug('Users online', { userCount })
     })
 
     this.socket.on('user:disconnected', (userCount) => {
-      console.log(`👥 Users online: ${userCount}`)
+      log.debug('Users online', { userCount })
     })
   }
 
@@ -326,7 +327,7 @@ class SocketService {
   // Room management
   joinRoom(room: 'dashboard' | 'reports'): void {
     if (!this.socket?.connected) {
-      console.warn('Cannot join room: Socket not connected')
+      log.warn('Cannot join room: Socket not connected')
       return
     }
 

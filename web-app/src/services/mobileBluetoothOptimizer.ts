@@ -7,6 +7,7 @@ import type {
 import { BluetoothConstants } from '../types/bluetoothPrinter'
 import { bluetoothPrinterService } from './bluetoothPrinterService'
 import { bluetoothConnectionManager } from './bluetoothConnectionManager'
+import { log } from '../utils/secureLogger'
 
 export interface MobileDeviceInfo {
   isMobile: boolean
@@ -116,9 +117,9 @@ export class MobileBluetoothOptimizer {
         (navigator as any).connection.addEventListener('change', this.handleNetworkChange.bind(this))
       }
       
-      console.log('Mobile Bluetooth optimizations initialized')
+      log.success('Mobile Bluetooth optimizations initialized')
     } catch (error) {
-      console.warn('Failed to initialize mobile optimizations:', error)
+      log.warn('Failed to initialize mobile optimizations', error)
     }
   }
 
@@ -134,7 +135,7 @@ export class MobileBluetoothOptimizer {
         await this.handleBatteryLevelChange()
       }
     } catch (error) {
-      console.warn('Battery monitoring not available:', error)
+      log.warn('Battery monitoring not available', error)
     }
   }
 
@@ -147,7 +148,7 @@ export class MobileBluetoothOptimizer {
           // Monitor for long tasks that might affect Bluetooth performance
           entries.forEach((entry) => {
             if (entry.entryType === 'longtask' && entry.duration > 50) {
-              console.warn(`Long task detected (${entry.duration}ms) - may affect Bluetooth performance`)
+              log.warn('Long task detected - may affect Bluetooth performance', { duration: entry.duration })
               this.adjustOptimizationsForPerformance()
             }
           })
@@ -156,7 +157,7 @@ export class MobileBluetoothOptimizer {
         this.performanceMonitor.observe({ entryTypes: ['longtask', 'measure'] })
       }
     } catch (error) {
-      console.warn('Performance monitoring not available:', error)
+      log.warn('Performance monitoring not available', error)
     }
   }
 
@@ -226,7 +227,7 @@ export class MobileBluetoothOptimizer {
 
       return true
     } catch (error) {
-      console.warn('Mobile Bluetooth permission check failed:', error)
+      log.warn('Mobile Bluetooth permission check failed', error)
       return false
     }
   }
@@ -333,8 +334,8 @@ export class MobileBluetoothOptimizer {
   private handleNetworkChange(): void {
     const connection = (navigator as any).connection
     if (connection) {
-      console.log(`Network changed: ${connection.effectiveType}, ${connection.downlink}Mbps`)
-      
+      log.debug('Network changed', { effectiveType: connection.effectiveType, downlink: connection.downlink })
+
       // Adjust optimizations based on network conditions
       if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
         this.optimizationSettings.reduceBluetoothScanning = true
@@ -344,7 +345,7 @@ export class MobileBluetoothOptimizer {
 
   private async enableLowPowerMode(): Promise<void> {
     this.lowPowerModeEnabled = true
-    console.log('Enabling low power mode for Bluetooth operations')
+    log.info('Enabling low power mode for Bluetooth operations')
 
     // Start auto-disconnect timers for idle connections
     const connectedDevices = await bluetoothPrinterService.getConnectedDevices()
@@ -355,7 +356,7 @@ export class MobileBluetoothOptimizer {
 
   private async disableLowPowerMode(): Promise<void> {
     this.lowPowerModeEnabled = false
-    console.log('Disabling low power mode for Bluetooth operations')
+    log.info('Disabling low power mode for Bluetooth operations')
 
     // Clear auto-disconnect timers
     for (const timeout of this.connectionTimeouts.values()) {
@@ -366,22 +367,22 @@ export class MobileBluetoothOptimizer {
 
   private enableBackgroundOptimizations(): void {
     if (this.optimizationSettings.enableBackgroundSync) {
-      console.log('Enabling background Bluetooth optimizations')
-      
+      log.info('Enabling background Bluetooth optimizations')
+
       // Reduce scanning and monitoring frequency
       this.optimizationSettings.reduceBluetoothScanning = true
     }
   }
 
   private disableBackgroundOptimizations(): void {
-    console.log('Disabling background Bluetooth optimizations')
+    log.info('Disabling background Bluetooth optimizations')
     this.optimizationSettings.reduceBluetoothScanning = false
   }
 
   private adjustOptimizationsForPerformance(): void {
     // Temporarily reduce Bluetooth activity due to detected performance issues
-    console.log('Adjusting Bluetooth optimizations due to performance issues')
-    
+    log.info('Adjusting Bluetooth optimizations due to performance issues')
+
     setTimeout(() => {
       // Increase chunk delay to reduce processor load
       const connectedDevices = bluetoothPrinterService.getConnectedDevices()
@@ -394,10 +395,10 @@ export class MobileBluetoothOptimizer {
     
     const timeout = setTimeout(async () => {
       try {
-        console.log(`Auto-disconnecting device ${deviceId} due to battery optimization`)
+        log.info('Auto-disconnecting device due to battery optimization', { deviceId })
         await bluetoothPrinterService.disconnectBluetoothPrinter(deviceId)
       } catch (error) {
-        console.error(`Failed to auto-disconnect device ${deviceId}:`, error)
+        log.error('Failed to auto-disconnect device', { deviceId, error })
       } finally {
         this.connectionTimeouts.delete(deviceId)
       }
@@ -442,7 +443,7 @@ export class MobileBluetoothOptimizer {
 
   updateOptimizationSettings(settings: Partial<MobileOptimizationSettings>): void {
     this.optimizationSettings = { ...this.optimizationSettings, ...settings }
-    console.log('Updated mobile optimization settings:', settings)
+    log.debug('Updated mobile optimization settings', settings)
   }
 
   destroy(): void {

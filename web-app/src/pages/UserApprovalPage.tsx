@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { toast } from 'react-hot-toast'
 import { UserService, type UserProfile } from '../services/userService'
+import { log } from '../utils/secureLogger'
 
 export const UserApprovalPage: React.FC = () => {
   const [pendingUsers, setPendingUsers] = useState<UserProfile[]>([])
@@ -23,7 +24,7 @@ export const UserApprovalPage: React.FC = () => {
       const users = await UserService.getPendingUsers()
       setPendingUsers(users)
     } catch (error) {
-      console.error('Failed to load pending users:', error)
+      log.error('Failed to load pending users', error)
       toast.error('Failed to load pending users')
     } finally {
       setIsLoading(false)
@@ -36,7 +37,7 @@ export const UserApprovalPage: React.FC = () => {
       const users = await UserService.getApprovedUsers()
       setApprovedUsers(users)
     } catch (error) {
-      console.error('Failed to load approved users:', error)
+      log.error('Failed to load approved users', error)
       toast.error('Failed to load approved users')
     } finally {
       setIsLoading(false)
@@ -56,7 +57,7 @@ export const UserApprovalPage: React.FC = () => {
         toast.error(result.message)
       }
     } catch (error) {
-      console.error('Failed to approve user:', error)
+      log.error('Failed to approve user', error)
       toast.error('Failed to approve user')
     } finally {
       setProcessingUsers(prev => {
@@ -80,7 +81,7 @@ export const UserApprovalPage: React.FC = () => {
         toast.error(result.message)
       }
     } catch (error) {
-      console.error('Failed to reject user:', error)
+      log.error('Failed to reject user', error)
       toast.error('Failed to reject user')
     } finally {
       setProcessingUsers(prev => {
@@ -107,7 +108,7 @@ export const UserApprovalPage: React.FC = () => {
         toast.error(result.message)
       }
     } catch (error) {
-      console.error('Failed to update user role:', error)
+      log.error('Failed to update user role', error)
       toast.error('Failed to update user role')
     } finally {
       setProcessingUsers(prev => {
@@ -133,7 +134,7 @@ export const UserApprovalPage: React.FC = () => {
         toast.error(result.message)
       }
     } catch (error) {
-      console.error('Failed to update user status:', error)
+      log.error('Failed to update user status', error)
       toast.error('Failed to update user status')
     } finally {
       setProcessingUsers(prev => {

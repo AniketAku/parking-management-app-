@@ -3,6 +3,8 @@
  * Implements client-side rate limiting for authentication and sensitive operations
  */
 
+import { log } from '../utils/secureLogger'
+
 interface RateLimitEntry {
   count: number
   firstAttempt: number
@@ -209,7 +211,7 @@ class RateLimitService {
       const data = Object.fromEntries(this.storage)
       localStorage.setItem('rateLimits', JSON.stringify(data))
     } catch (error) {
-      console.warn('Failed to save rate limits to localStorage:', error)
+      log.warn('Failed to save rate limits to localStorage', error)
     }
   }
 
@@ -224,7 +226,7 @@ class RateLimitService {
         this.storage = new Map(Object.entries(parsed))
       }
     } catch (error) {
-      console.warn('Failed to load rate limits from localStorage:', error)
+      log.warn('Failed to load rate limits from localStorage', error)
       this.storage.clear()
     }
   }

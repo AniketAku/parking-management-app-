@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database';
+import { log } from '../utils/secureLogger';
 
 type ParkingSession = Database['public']['Tables']['parking_sessions']['Row'];
 type Payment = Database['public']['Tables']['payments']['Row'];
@@ -58,7 +59,7 @@ export class ShiftLinkingService {
         .single();
 
       if (error && error.code !== 'PGRST116') { // Not found is OK
-        console.error('Error fetching active shift:', error);
+        log.error('Error fetching active shift', error);
         return null;
       }
 
@@ -72,7 +73,7 @@ export class ShiftLinkingService {
       this.cacheExpiry = now + (this.CACHE_DURATION / 4); // Shorter cache for null results
       return null;
     } catch (error) {
-      console.error('Unexpected error fetching active shift:', error);
+      log.error('Unexpected error fetching active shift', error);
       return null;
     }
   }
@@ -115,7 +116,7 @@ export class ShiftLinkingService {
         .eq('id', sessionId);
 
       if (updateError) {
-        console.error('Error linking parking session to shift:', updateError);
+        log.error('Error linking parking session to shift', updateError);
         return {
           success: false,
           shift_id: activeShift.id,
@@ -134,7 +135,7 @@ export class ShiftLinkingService {
       };
 
     } catch (error) {
-      console.error('Error in linkParkingSession:', error);
+      log.error('Error in linkParkingSession', error);
       return {
         success: false,
         shift_id: null,
@@ -175,7 +176,7 @@ export class ShiftLinkingService {
         .eq('id', paymentId);
 
       if (updateError) {
-        console.error('Error linking payment to shift:', updateError);
+        log.error('Error linking payment to shift', updateError);
         return {
           success: false,
           shift_id: activeShift.id,
@@ -194,7 +195,7 @@ export class ShiftLinkingService {
       };
 
     } catch (error) {
-      console.error('Error in linkPayment:', error);
+      log.error('Error in linkPayment', error);
       return {
         success: false,
         shift_id: null,
@@ -219,10 +220,10 @@ export class ShiftLinkingService {
       });
 
       if (error) {
-        console.error('Error updating shift entry statistics:', error);
+        log.error('Error updating shift entry statistics', error);
       }
     } catch (error) {
-      console.error('Unexpected error updating entry stats:', error);
+      log.error('Unexpected error updating entry stats', error);
     }
   }
 
@@ -243,10 +244,10 @@ export class ShiftLinkingService {
       });
 
       if (error) {
-        console.error('Error updating shift payment statistics:', error);
+        log.error('Error updating shift payment statistics', error);
       }
     } catch (error) {
-      console.error('Unexpected error updating payment stats:', error);
+      log.error('Unexpected error updating payment stats', error);
     }
   }
 
@@ -267,7 +268,7 @@ export class ShiftLinkingService {
       });
 
       if (error) {
-        console.error('Error updating shift exit statistics:', error);
+        log.error('Error updating shift exit statistics', error);
         return {
           success: false,
           shift_id: shiftId,
@@ -283,7 +284,7 @@ export class ShiftLinkingService {
       };
 
     } catch (error) {
-      console.error('Error in updateShiftStatisticsForExit:', error);
+      log.error('Error in updateShiftStatisticsForExit', error);
       return {
         success: false,
         shift_id: shiftId,
@@ -378,7 +379,7 @@ export class ShiftLinkingService {
       };
 
     } catch (error) {
-      console.error('Error in bulkLinkExistingSessions:', error);
+      log.error('Error in bulkLinkExistingSessions', error);
       return {
         sessions_linked: sessionsLinked,
         payments_linked: paymentsLinked,
@@ -493,7 +494,7 @@ export class ShiftLinkingService {
       };
 
     } catch (error) {
-      console.error('Error validating shift linking:', error);
+      log.error('Error validating shift linking', error);
       return {
         valid: false,
         issues: [`Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
@@ -505,6 +506,137 @@ export class ShiftLinkingService {
           unlinked_sessions: 0,
           unlinked_payments: 0
         }
+      };
+    }
+  }
+
+  /**
+   * Process vehicle exit with shift-aware payment handling
+   * Transforms payment data to match database trigger expectations
+   */
+  async processVehicleExitWithShift(
+    entryId: string,
+    payments: Array<{ mode: 'Cash' | 'Online'; amount: number; transactionId?: string; notes?: string }>,
+    exitNotes?: string
+  ): Promise<{
+    success: boolean;
+    entry?: any;
+    message: string;
+  }> {
+    try {
+      const activeShift = await this.getCurrentActiveShift();
+
+      if (!activeShift) {
+        return {
+          success: false,
+          message: 'No active shift found. Cannot process exit.',
+        };
+      }
+
+      // Get the entry first
+      const { data: entry, error: getError } = await supabase
+        .from('parking_entries')
+        .select('*')
+        .eq('id', entryId)
+        .single();
+
+      if (getError || !entry) {
+        return {
+          success: false,
+          message: 'Entry not found',
+        };
+      }
+
+      // Calculate total from payments array
+      const actualFee = payments.reduce((sum, payment) => sum + payment.amount, 0);
+
+      // Determine payment type based on payment modes
+      const hasCash = payments.some(p => p.mode === 'Cash');
+      const hasOnline = payments.some(p => p.mode === 'Online');
+      let paymentType: 'Cash' | 'Online' | 'Mixed';
+
+      if (hasCash && hasOnline) {
+        paymentType = 'Mixed';
+      } else if (hasCash) {
+        paymentType = 'Cash';
+      } else {
+        paymentType = 'Online';
+      }
+
+      // Legacy payment_mode for backward compatibility
+      const paymentMode = paymentType === 'Cash' ? 'cash' : 'digital';
+
+      const exitTime = new Date().toISOString();
+
+      // Update entry with shift-aware payment data
+      const { data: updatedEntry, error: updateError } = await supabase
+        .from('parking_entries')
+        .update({
+          exit_time: exitTime,
+          status: 'Exited',
+          payment_status: 'Paid',
+          payment_type: paymentType,
+          payment_mode: paymentMode,
+          parking_fee: actualFee,
+          actual_fee: actualFee,
+          notes: exitNotes || entry.notes,
+          shift_session_id: activeShift.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', entryId)
+        .select()
+        .single();
+
+      if (updateError) {
+        log.error('Error updating entry for exit', updateError);
+        return {
+          success: false,
+          message: `Failed to process exit: ${updateError.message}`,
+        };
+      }
+
+      // Create individual payment records in the payments table
+      for (const payment of payments) {
+        const paymentRecord = {
+          amount: payment.amount,
+          payment_mode: payment.mode.toLowerCase(),
+          payment_time: exitTime,
+          session_id: entryId,
+          shift_session_id: activeShift.id,
+          transaction_id: payment.transactionId || null,
+          notes: payment.notes || null,
+          created_at: exitTime
+        };
+
+        const { error: paymentError } = await supabase
+          .from('payments')
+          .insert(paymentRecord);
+
+        if (paymentError) {
+          log.error('Error creating payment record', paymentError);
+          // Continue with other payments even if one fails
+        }
+      }
+
+      log.success('Entry updated with shift link and payment records', {
+        entryId,
+        shiftId: activeShift.id,
+        paymentType,
+        paymentCount: payments.length,
+        totalAmount: actualFee
+      });
+
+      return {
+        success: true,
+        entry: updatedEntry,
+        message: 'Vehicle exit processed successfully with shift link',
+      };
+
+    } catch (error) {
+      log.error('Error in processVehicleExitWithShift', error);
+      return {
+        success: false,
+        message: `Exit processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
     }
   }

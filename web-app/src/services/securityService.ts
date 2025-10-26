@@ -4,6 +4,8 @@
  * input validation, rate limiting, and security monitoring
  */
 
+import { log } from '../utils/secureLogger'
+
 export interface SecurityHeaders {
   'X-CSRF-Token': string
   'X-Content-Type-Options': string
@@ -431,12 +433,14 @@ class SecurityService {
       sessionId: this.getDeviceFingerprint()
     }
     
-    // Log to console with appropriate level
-    const logMethod = severity === 'critical' ? console.error : 
-                     severity === 'high' ? console.warn :
-                     console.log
-    
-    logMethod('🚨 Security Event:', logEntry)
+    // Log with appropriate level
+    if (severity === 'critical') {
+      log.error('Security Event', logEntry)
+    } else if (severity === 'high') {
+      log.warn('Security Event', logEntry)
+    } else {
+      log.info('Security Event', logEntry)
+    }
     
     // Store critical events locally for audit
     if (severity === 'critical' || severity === 'high') {
@@ -445,7 +449,7 @@ class SecurityService {
     
     // In production, send to security monitoring service
     if (import.meta.env.PROD) {
-      this.sendToSecurityMonitoring(logEntry).catch(console.error)
+      this.sendToSecurityMonitoring(logEntry).catch(error => log.error('Failed to send to security monitoring', error))
     }
   }
 
@@ -467,7 +471,7 @@ class SecurityService {
       
       localStorage.setItem(key, JSON.stringify(events))
     } catch (error) {
-      console.error('Failed to store security event:', error)
+      log.error('Failed to store security event', error)
     }
   }
 
@@ -486,10 +490,10 @@ class SecurityService {
       })
       
       if (!response.ok) {
-        console.warn('Failed to send security event to monitoring service')
+        log.warn('Failed to send security event to monitoring service')
       }
     } catch (error) {
-      console.warn('Security monitoring service unavailable:', error)
+      log.warn('Security monitoring service unavailable', error)
     }
   }
 

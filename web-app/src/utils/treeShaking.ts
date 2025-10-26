@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react'
+import { log } from './secureLogger'
 
 // Bundle analysis types
 interface BundleChunk {
@@ -419,9 +420,10 @@ export const treeShakingOptimizer = TreeShakingOptimizer.getInstance()
 if (__DEV__ && typeof window !== 'undefined') {
   // Analyze imports during development
   window.addEventListener('load', () => {
-    console.log('🌳 Tree Shaking Analysis:')
-    console.log('Optimization suggestions:', treeShakingOptimizer.getOptimizationSuggestions())
-    console.log('Unused exports:', treeShakingOptimizer.getUnusedExports())
-    console.log('Dead code:', DeadCodeDetector.findUnusedComponents())
+    log.debug('Tree Shaking Analysis', {
+      optimizationSuggestions: treeShakingOptimizer.getOptimizationSuggestions(),
+      unusedExports: treeShakingOptimizer.getUnusedExports(),
+      deadCode: DeadCodeDetector.findUnusedComponents()
+    })
   })
 }

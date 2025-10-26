@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabase';
 import { performanceOptimizationService } from './PerformanceOptimizationService';
+import { log } from '../utils/secureLogger';
 
 export interface ErrorContext {
   operation: string;
@@ -143,7 +144,7 @@ export class ErrorHandlingService {
     try {
       await this.persistError(errorId, errorMessage, fullContext);
     } catch (persistError) {
-      console.error('Failed to persist error to database:', persistError);
+      log.error('Failed to persist error to database', persistError);
     }
 
     // Trigger alerts for critical errors
@@ -151,7 +152,7 @@ export class ErrorHandlingService {
       await this.triggerCriticalErrorAlert(errorId, errorMessage, fullContext);
     }
 
-    console.error(`[${severity.toUpperCase()}] ${fullContext.operation}:`, errorMessage, fullContext);
+    log.error(`[${severity.toUpperCase()}] ${fullContext.operation}`, { message: errorMessage, context: fullContext });
     return errorId;
   }
 
@@ -265,7 +266,7 @@ export class ErrorHandlingService {
       }
 
       consistencyCheck.endTime = Date.now();
-      console.log(`Data consistency check completed for ${table} (${checkType}): ${issues.length} issues found`);
+      log.info('Data consistency check completed', { table, checkType, issuesFound: issues.length });
 
       return consistencyCheck;
     } catch (error) {
@@ -327,7 +328,7 @@ export class ErrorHandlingService {
           throw new Error(`Failed to commit transaction: ${commitError.message}`);
         }
 
-        console.log(`Transaction ${transactionName} committed successfully`);
+        log.success('Transaction committed successfully', { transactionName });
         return results;
 
       } catch (operationError) {
@@ -335,7 +336,7 @@ export class ErrorHandlingService {
         try {
           const { error: rollbackError } = await supabase.rpc('rollback_transaction');
           if (rollbackError) {
-            console.error('Failed to rollback transaction:', rollbackError);
+            log.error('Failed to rollback transaction', rollbackError);
           }
 
           if (onRollback) {
@@ -343,7 +344,7 @@ export class ErrorHandlingService {
           }
 
         } catch (rollbackError) {
-          console.error('Error during transaction rollback:', rollbackError);
+          log.error('Error during transaction rollback', rollbackError);
         }
 
         await this.reportError(operationError as Error, {
@@ -487,7 +488,7 @@ export class ErrorHandlingService {
       try {
         await this.runScheduledConsistencyChecks();
       } catch (error) {
-        console.error('Scheduled consistency check failed:', error);
+        log.error('Scheduled consistency check failed', error);
       }
     }, 3600000); // Every hour
   }
@@ -532,7 +533,7 @@ export class ErrorHandlingService {
       try {
         await this.checkDataConsistency(type, table, { scope: 'recent' });
       } catch (error) {
-        console.error(`Scheduled consistency check failed for ${table}:`, error);
+        log.error('Scheduled consistency check failed', { table, error });
       }
     }
   }
@@ -561,7 +562,7 @@ export class ErrorHandlingService {
           break;
       }
     } catch (error) {
-      console.error('Error during consistency check:', error);
+      log.error('Error during consistency check', error);
       throw error;
     }
 
@@ -611,7 +612,7 @@ export class ErrorHandlingService {
         }
       }
     } catch (error) {
-      console.error('Referential integrity check failed:', error);
+      log.error('Referential integrity check failed', error);
       throw error;
     }
 
@@ -655,7 +656,7 @@ export class ErrorHandlingService {
       try {
         await this.applyAutoFix(issue, check.table);
       } catch (error) {
-        console.error(`Auto-fix failed for issue ${issue.type}:`, error);
+        log.error('Auto-fix failed', { issueType: issue.type, error });
       }
     }
   }
@@ -675,7 +676,7 @@ export class ErrorHandlingService {
         break;
 
       default:
-        console.warn(`No auto-fix available for issue type: ${issue.type}`);
+        log.warn('No auto-fix available', { issueType: issue.type });
     }
   }
 
@@ -729,7 +730,7 @@ export class ErrorHandlingService {
       if (breaker.isOpen && breaker.successCount >= this.circuitBreakerConfig.halfOpenMaxCalls) {
         breaker.isOpen = false;
         breaker.halfOpenUntil = undefined;
-        console.log(`Circuit breaker closed for operation: ${operationName}`);
+        log.success('Circuit breaker closed', { operation: operationName });
       }
     } else {
       breaker.failureCount++;
@@ -739,7 +740,7 @@ export class ErrorHandlingService {
       if (breaker.failureCount >= this.circuitBreakerConfig.failureThreshold) {
         breaker.isOpen = true;
         breaker.halfOpenUntil = Date.now() + this.circuitBreakerConfig.resetTimeoutMs;
-        console.warn(`Circuit breaker opened for operation: ${operationName}`);
+        log.warn('Circuit breaker opened', { operation: operationName });
       }
     }
   }
@@ -851,10 +852,10 @@ export class ErrorHandlingService {
         });
 
       if (error) {
-        console.warn('Failed to persist error to database:', error);
+        log.warn('Failed to persist error to database', { error });
       }
     } catch (persistError) {
-      console.warn('Error persisting error to database:', persistError);
+      log.warn('Error persisting error to database', persistError);
     }
   }
 
@@ -868,7 +869,7 @@ export class ErrorHandlingService {
         metadata: context.metadata
       });
     } catch (error) {
-      console.error('Failed to trigger critical error alert:', error);
+      log.error('Failed to trigger critical error alert', error);
     }
   }
 

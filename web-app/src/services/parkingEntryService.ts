@@ -3,6 +3,7 @@ import printService from './printService'
 import { unifiedFeeService } from './UnifiedFeeCalculationService'
 import type { ParkingEntry, CreateParkingEntryRequest, UpdateParkingEntryRequest } from './parkingService'
 import type { PrintServiceOptions } from './printService'
+import { log } from '../utils/secureLogger'
 
 export interface ParkingEntryWithPrintOptions {
   printOnEntry?: boolean
@@ -20,6 +21,7 @@ export interface ProcessExitRequest {
   paymentType: string
   exitNotes?: string
   printOptions?: ParkingEntryWithPrintOptions
+  shiftSessionId?: string  // NEW: Link exit to active shift session
 }
 
 export class ParkingEntryService {
@@ -44,14 +46,14 @@ export class ParkingEntryService {
           try {
             printResult = await printService.printEntryTicket(entry, data.printOptions?.printOptions)
           } catch (printError) {
-            console.warn('Entry print failed but entry was created:', printError)
+            log.warn('Entry print failed but entry was created', printError)
           }
         }
       }
 
       return { entry, printResult }
     } catch (error) {
-      console.error('Error creating parking entry:', error)
+      log.error('Error creating parking entry', error)
       throw error
     }
   }
@@ -68,8 +70,8 @@ export class ParkingEntryService {
       }
 
       const exitTime = new Date().toISOString()
-      
-      console.log('🚗 EXIT DEBUG - Processing exit:', {
+
+      log.debug('EXIT DEBUG - Processing exit', {
         entryId: exitRequest.entryId,
         actualFee: exitRequest.actualFee,
         paymentType: exitRequest.paymentType,
@@ -84,7 +86,7 @@ export class ParkingEntryService {
         'exit-processing'
       )
 
-      console.log('💰 EXIT FEE COMPARISON:', {
+      log.debug('EXIT FEE COMPARISON', {
         userInput: exitRequest.actualFee,
         calculated: calculatedFee,
         isManualOverride: Math.abs(exitRequest.actualFee - calculatedFee) > 0.01,
@@ -98,10 +100,11 @@ export class ParkingEntryService {
         payment_type: exitRequest.paymentType,
         parking_fee: exitRequest.actualFee,           // User's actual payment (priority field for revenue)
         // calculated_fee removed - column doesn't exist in database schema
-        notes: exitRequest.exitNotes
+        notes: exitRequest.exitNotes,
+        shift_session_id: exitRequest.shiftSessionId  // ✅ Link exit to active shift
       })
 
-      console.log('✅ EXIT DEBUG - Entry updated:', {
+      log.debug('EXIT DEBUG - Entry updated', {
         id: updatedEntry.id,
         vehicleNumber: updatedEntry.vehicleNumber,
         status: updatedEntry.status,
@@ -131,14 +134,14 @@ export class ParkingEntryService {
             
             printResult = await printService.printExitReceipt(exitData, exitRequest.printOptions?.printOptions)
           } catch (printError) {
-            console.warn('Exit print failed but exit was processed:', printError)
+            log.warn('Exit print failed but exit was processed', printError)
           }
         }
       }
 
       return { entry: updatedEntry, printResult }
     } catch (error) {
-      console.error('Error processing vehicle exit:', error)
+      log.error('Error processing vehicle exit', error)
       throw error
     }
   }
@@ -176,7 +179,7 @@ export class ParkingEntryService {
 
       return await printService.printEntryTicket(entry, options)
     } catch (error) {
-      console.error('Error printing existing entry:', error)
+      log.error('Error printing existing entry', error)
       throw error
     }
   }
@@ -208,7 +211,7 @@ export class ParkingEntryService {
 
       return await printService.printExitReceipt(exitData, options)
     } catch (error) {
-      console.error('Error reprinting receipt:', error)
+      log.error('Error reprinting receipt', error)
       throw error
     }
   }

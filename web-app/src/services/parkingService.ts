@@ -5,6 +5,7 @@ import { parseFromDatabase } from '../utils/timezone'
 import { transformParkingDataFromDB, transformParkingDataToDB } from '../utils/dataTransformUtils'
 import { ErrorHandler, DatabaseError, BusinessLogicError, ErrorCode } from '../utils/errorHandler'
 import { unifiedFeeService } from './UnifiedFeeCalculationService'
+import { log } from '../utils/secureLogger'
 
 export interface CreateParkingEntryRequest {
   transport_name: string
@@ -15,6 +16,7 @@ export interface CreateParkingEntryRequest {
   notes?: string
   parking_fee: number       // UPDATED: Renamed from calculated_fee
   entry_time?: string
+  shift_session_id?: string // NEW: Link to active shift session
 }
 
 export interface UpdateParkingEntryRequest {
@@ -30,6 +32,7 @@ export interface UpdateParkingEntryRequest {
   actual_fee?: number       // Database column (primary)
   calculated_fee?: number   // Database column (backup/migration)
   notes?: string
+  shift_session_id?: string // NEW: Link exit to active shift session
 }
 
 export class ParkingService {
@@ -50,7 +53,8 @@ export class ParkingService {
           parking_fee: data.parking_fee,              // UPDATED: Use new field name
           entry_time: data.entry_time || getCurrentParkingTime(),
           status: 'Active',                           // UPDATED: Use new status value
-          payment_status: 'Pending'                   // UPDATED: Use new payment status value
+          payment_status: 'Pending',                  // UPDATED: Use new payment status value
+          shift_session_id: data.shift_session_id || null  // NEW: Link to active shift
           // Note: serial is auto-generated, don't include it
         })
         .select()
@@ -200,7 +204,7 @@ export class ParkingService {
       if (updates.actual_fee !== undefined) updateData.actual_fee = updates.actual_fee
       if (updates.amount_paid !== undefined) updateData.amount_paid = updates.amount_paid
 
-      console.log('🔧 UPDATE DEBUG - Using RPC to update parking entry:', { id, updates: updateData })
+      log.debug('Using RPC to update parking entry', { id, updates: updateData })
 
       // Use RPC function to bypass RLS
       const { data, error } = await supabase
@@ -224,7 +228,7 @@ export class ParkingService {
         )
       }
 
-      console.log('✅ UPDATE DEBUG - RPC update successful:', data)
+      log.success('RPC update successful', data)
       return transformParkingDataFromDB(data.data)
     } catch (error) {
       if (error instanceof DatabaseError) {
@@ -271,8 +275,8 @@ export class ParkingService {
    * Get parking statistics
    */
   static async getStatistics(): Promise<ParkingStatistics> {
-    console.log('📈 STATISTICS DEBUG - getStatistics function called')
-    try {
+    log.debug('getStatistics function called')
+    try{
       // Get all entries for calculations
       const { data: entries, error } = await supabase
         .from('parking_entries')
@@ -285,18 +289,18 @@ export class ParkingService {
         })
       }
 
-      console.log('🔍 RAW DATABASE DATA - Total entries:', entries?.length || 0)
+      log.debug('Raw database data', { totalEntries: entries?.length || 0 })
       if (entries && entries.length > 0) {
-        console.log('🔍 RAW DATABASE SAMPLE - First entry fields:', Object.keys(entries[0]))
-        console.log('🔍 RAW DATABASE SAMPLE - First entry data:', entries[0])
+        log.debug('Raw database sample - first entry fields', { fields: Object.keys(entries[0]) })
+        log.debug('Raw database sample - first entry data', entries[0])
 
         // Check for paid entries
         const paidEntries = entries.filter(e => e.payment_status === 'Paid')
-        console.log('💰 PAID ENTRIES DEBUG - Found paid entries:', paidEntries.length)
+        log.debug('Found paid entries', { count: paidEntries.length })
 
         if (paidEntries.length > 0) {
-          console.log('💰 PAID ENTRY SAMPLE - First paid entry fields:', Object.keys(paidEntries[0]))
-          console.log('💰 PAID ENTRY SAMPLE - First paid entry data:', paidEntries[0])
+          log.debug('Paid entry sample - first paid entry fields', { fields: Object.keys(paidEntries[0]) })
+          log.debug('Paid entry sample - first paid entry data', paidEntries[0])
         }
       }
 
@@ -325,19 +329,19 @@ export class ParkingService {
         return exitDate >= today && exitDate < tomorrow
       })
 
-      console.log('📅 TODAY INCOME DEBUG - Eligible entries for today:', todayEligibleEntries.length)
+      log.debug('Eligible entries for today', { count: todayEligibleEntries.length })
 
       const todayIncome = todayEligibleEntries
         .reduce((sum, e) => {
-          console.log('🔍 ENTRY BEFORE TRANSFORM - Raw entry:', e)
+          log.debug('Entry before transform', { rawEntry: e })
 
-          // 🔧 Transform entry to frontend format before unified service
+          // Transform entry to frontend format before unified service
           const transformedEntry = transformParkingDataFromDB(e)
-          console.log('🔄 ENTRY AFTER TRANSFORM - Transformed entry:', transformedEntry)
+          log.debug('Entry after transform', { transformedEntry })
 
-          // 🎯 Use unified service for consistent revenue extraction
+          // Use unified service for consistent revenue extraction
           const feeAmount = unifiedFeeService.getRevenueAmount(transformedEntry)
-          console.log('💰 UNIFIED REVENUE - Using unified service:', {
+          log.debug('Using unified service', {
             vehicleNumber: e.vehicle_number,
             originalFields: {
               parking_fee: e.parking_fee,
@@ -385,14 +389,14 @@ export class ParkingService {
 
       // Calculate total income from all paid vehicles (all-time) using unified service
       const allPaidEntries = entries.filter(e => e.payment_status === 'Paid')
-      console.log('💰 TOTAL INCOME DEBUG - All paid entries:', allPaidEntries.length)
+      log.debug('All paid entries', { count: allPaidEntries.length })
 
       const totalIncome = allPaidEntries
         .reduce((sum, e) => {
-          // 🔧 Transform entry to frontend format before unified service
+          // Transform entry to frontend format before unified service
           const transformedEntry = transformParkingDataFromDB(e)
           const feeAmount = unifiedFeeService.getRevenueAmount(transformedEntry)
-          console.log('💰 TOTAL INCOME - Using unified service:', {
+          log.debug('Total income - using unified service', {
             vehicleNumber: e.vehicle_number,
             originalFields: {
               parking_fee: e.parking_fee,

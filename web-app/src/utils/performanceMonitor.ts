@@ -3,6 +3,8 @@
  * Measures component render times, bundle sizes, and user interaction responsiveness
  */
 
+import { log } from './secureLogger'
+
 interface PerformanceMetric {
   name: string
   value: number
@@ -73,7 +75,7 @@ export class PerformanceMonitor {
       navObserver.observe({ entryTypes: ['navigation'] })
       this.observers.push(navObserver)
     } catch (e) {
-      console.warn('Navigation observer not supported')
+      log.warn('Navigation observer not supported', e)
     }
 
     // Observe resource timing
@@ -89,7 +91,7 @@ export class PerformanceMonitor {
       resourceObserver.observe({ entryTypes: ['resource'] })
       this.observers.push(resourceObserver)
     } catch (e) {
-      console.warn('Resource observer not supported')
+      log.warn('Resource observer not supported', e)
     }
 
     // Observe paint timing
@@ -108,7 +110,7 @@ export class PerformanceMonitor {
       paintObserver.observe({ entryTypes: ['paint'] })
       this.observers.push(paintObserver)
     } catch (e) {
-      console.warn('Paint observer not supported')
+      log.warn('Paint observer not supported', e)
     }
 
     // Observe largest contentful paint
@@ -132,7 +134,7 @@ export class PerformanceMonitor {
       lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] })
       this.observers.push(lcpObserver)
     } catch (e) {
-      console.warn('LCP observer not supported')
+      log.warn('LCP observer not supported', e)
     }
 
     // Observe layout shifts
@@ -153,7 +155,7 @@ export class PerformanceMonitor {
       clsObserver.observe({ entryTypes: ['layout-shift'] })
       this.observers.push(clsObserver)
     } catch (e) {
-      console.warn('CLS observer not supported')
+      log.warn('CLS observer not supported', e)
     }
   }
 

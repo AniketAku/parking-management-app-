@@ -7,6 +7,7 @@ import { ParkingService } from '../../services/parkingService'
 import { unifiedFeeService } from '../../services/UnifiedFeeCalculationService'  // ✅ Correct import - singleton instance
 import { useSettingsCategory } from '../../hooks/useSettings'
 import { formatDateTime, getVehicleTypeColor } from '../../utils/helpers'
+import { log } from '../../utils/secureLogger'
 import { toast } from 'react-hot-toast'
 import type { ParkingEntry } from '../../types'
 
@@ -125,7 +126,7 @@ export const EditEntryModal: React.FC<EditEntryModalProps> = ({
 
         // Check if entry date actually changed
         if (newEntryISO !== originalEntryDateTime) {
-          console.log('🔄 Entry date changed - recalculating fees and adding audit trail', {
+          log.debug('Entry date changed - recalculating fees and adding audit trail', {
             original: originalEntryDateTime,
             new: newEntryISO,
             vehicleType: formData.vehicleType
@@ -146,14 +147,14 @@ export const EditEntryModal: React.FC<EditEntryModalProps> = ({
 
             updateData.calculated_fee = recalculatedFee
 
-            console.log('✅ Fee recalculated', {
+            log.debug('Fee recalculated', {
               originalEntryTime: originalEntryDateTime,
               newEntryTime: newEntryISO,
               originalFee: entry.calculatedFee,
               recalculatedFee
             })
           } catch (feeError) {
-            console.error('❌ Fee recalculation failed:', feeError)
+            log.error('Fee recalculation failed', feeError)
             toast.error('Error recalculating fee. Please review manually.', { duration: 5000 })
           }
 
@@ -191,7 +192,7 @@ export const EditEntryModal: React.FC<EditEntryModalProps> = ({
       onSuccess?.(updatedEntry)
       onClose()
     } catch (error) {
-      console.error('Error updating entry:', error)
+      log.error('Error updating entry', error)
       toast.error('Failed to update entry. Please try again.')
     } finally {
       setIsLoading(false)

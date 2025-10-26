@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import type { ParkingEntry, ParkingStatistics } from '../types'
 import { toast } from 'react-hot-toast'
 import { RealtimeChannel } from '@supabase/supabase-js'
+import { log } from '../utils/secureLogger'
 
 export interface RealtimeEvents {
   // Parking entry events
@@ -32,7 +33,7 @@ class SupabaseRealtimeService {
     try {
       // Check if real-time is disabled via environment variable
       if (import.meta.env.VITE_DISABLE_REALTIME === 'true') {
-        console.log('📴 Real-time updates disabled via environment variable')
+        log.info('Real-time updates disabled via environment variable')
         this.isConnected = false
         this.emit('connection:status', 'disconnected')
         return
@@ -71,7 +72,7 @@ class SupabaseRealtimeService {
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             this.isConnected = true
-            console.log('✅ Supabase realtime connected')
+            log.success('Supabase realtime connected')
             
             // Execute connection callbacks
             this.connectionCallbacks.forEach(callback => callback())
@@ -85,7 +86,7 @@ class SupabaseRealtimeService {
             })
           } else if (status === 'CHANNEL_ERROR') {
             this.isConnected = false
-            console.warn('❌ Supabase realtime connection error - operating in offline mode')
+            log.warn('Supabase realtime connection error - operating in offline mode')
 
             this.emit('connection:status', 'disconnected')
 
@@ -99,7 +100,7 @@ class SupabaseRealtimeService {
             }
           } else if (status === 'TIMED_OUT') {
             this.isConnected = false
-            console.warn('⏰ Supabase realtime connection timed out - retrying...')
+            log.warn('Supabase realtime connection timed out - retrying...')
 
             this.emit('connection:status', 'disconnected')
 
@@ -113,7 +114,7 @@ class SupabaseRealtimeService {
             }
           } else if (status === 'CLOSED') {
             this.isConnected = false
-            console.log('🔌 Supabase realtime disconnected')
+            log.info('Supabase realtime disconnected')
             
             // Execute disconnection callbacks
             this.disconnectionCallbacks.forEach(callback => callback())
@@ -127,7 +128,7 @@ class SupabaseRealtimeService {
           }
         })
     } catch (error) {
-      console.warn('Failed to connect to Supabase realtime, operating in offline mode:', error)
+      log.warn('Failed to connect to Supabase realtime, operating in offline mode', error)
       this.isConnected = false
       this.emit('connection:status', 'disconnected')
 
@@ -149,7 +150,7 @@ class SupabaseRealtimeService {
     }
     this.isConnected = false
     this.eventListeners.clear()
-    console.log('🔌 Supabase realtime disconnected')
+    log.info('Supabase realtime disconnected')
   }
 
   // Event handler for database INSERT
@@ -254,7 +255,7 @@ class SupabaseRealtimeService {
         try {
           (callback as any)(...args)
         } catch (error) {
-          console.error(`Error in event listener for ${event}:`, error)
+          log.error('Error in event listener', { event, error })
         }
       })
     }
@@ -307,13 +308,13 @@ class SupabaseRealtimeService {
 
   // Room management (simplified for Supabase - no explicit rooms needed)
   joinRoom(room: 'dashboard' | 'reports'): void {
-    console.log(`📡 Joined realtime room: ${room}`)
+    log.debug('Joined realtime room', { room })
     // With Supabase, all users automatically get updates for the tables they subscribe to
     // No explicit room joining needed
   }
 
   leaveRoom(room: 'dashboard' | 'reports'): void {
-    console.log(`📡 Left realtime room: ${room}`)
+    log.debug('Left realtime room', { room })
     // With Supabase, disconnecting from the channel stops all updates
     // Individual room leaving not needed
   }

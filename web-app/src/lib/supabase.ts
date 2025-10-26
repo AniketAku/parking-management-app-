@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 import { secureDemoService } from '../services/secureDemoService'
+import { log } from '../utils/secureLogger'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
 
 // Debug logging for environment variables
-console.log('🔧 Supabase Config DEBUG:', {
+log.debug('Supabase Config DEBUG', {
   hasUrl: Boolean(supabaseUrl),
   hasKey: Boolean(supabaseAnonKey),
   urlValue: supabaseUrl || 'MISSING',
@@ -348,7 +349,7 @@ const createSecureMockSupabase = () => {
 // Check if we have valid Supabase configuration
 const hasValidSupabaseConfig = supabaseUrl && supabaseAnonKey && supabaseUrl.trim().length > 0 && supabaseAnonKey.trim().length > 0
 
-console.log('🔧 Supabase Validation:', {
+log.debug('Supabase Validation', {
   hasValidConfig: hasValidSupabaseConfig,
   mode: hasValidSupabaseConfig ? 'Live Mode' : 'Demo Mode'
 })

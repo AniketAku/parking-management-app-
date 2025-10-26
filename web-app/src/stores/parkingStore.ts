@@ -6,6 +6,7 @@ import type { CreateParkingEntryRequest } from '../services/parkingService'
 import { getCurrentParkingTime } from '../utils/time-fix'
 import { isCurrentlyParked } from '../utils/statusHelpers'
 import toast from 'react-hot-toast'
+import { log } from '../utils/secureLogger'
 
 interface ParkingState {
   // Data
@@ -276,12 +277,12 @@ export const useParkingStore = create<ParkingState>()(
           // Set new debounced timer
           debounceTimer = setTimeout(async () => {
             try {
-              console.log('🔄 STORE DEBUG - About to call ParkingService.getStatistics()')
+              log.debug('About to call ParkingService.getStatistics()')
               const statistics = await ParkingService.getStatistics()
-              console.log('✅ STORE DEBUG - Statistics received:', statistics)
+              log.debug('Statistics received', statistics)
               set({ statistics }, false, 'refreshStatistics')
             } catch (error) {
-              console.error('❌ STORE DEBUG - Statistics error:', error)
+              log.error('Statistics error', error)
               const message = error instanceof Error ? error.message : 'Failed to load statistics'
               set({ error: message }, false, 'refreshStatistics')
             }

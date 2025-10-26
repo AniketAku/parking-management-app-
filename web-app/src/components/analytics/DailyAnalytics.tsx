@@ -4,6 +4,7 @@ import { useParkingStore } from '../../stores/parkingStore'
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns'
 import { getRevenueAmount, formatCurrency } from '../../utils/helpers'
 import { isCurrentlyParked } from '../../utils/statusHelpers'
+import { log } from '../../utils/secureLogger'
 
 interface DailyMetrics {
   totalEntries: number
@@ -21,7 +22,7 @@ const DailyAnalytics: React.FC = () => {
   // Debug logging (only in development and when needed)
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development' && entries?.length === 0) {
-      console.log('📊 DailyAnalytics: No entries loaded yet')
+      log.debug('DailyAnalytics: No entries loaded yet')
     }
   }, [entries, loading])
 
@@ -75,7 +76,7 @@ const DailyAnalytics: React.FC = () => {
 
       // Debug logging (development only)
       if (process.env.NODE_ENV === 'development' && realEntries.indexOf(entry) === 0 && !isToday) {
-        console.log('📊 No entries for today found')
+        log.debug('No entries for today found')
       }
 
       return isToday
@@ -83,7 +84,7 @@ const DailyAnalytics: React.FC = () => {
 
     // Minimal logging for development
     if (process.env.NODE_ENV === 'development' && todayEntries.length === 0 && realEntries.length > 0) {
-      console.log('📊 DailyAnalytics: No entries for today, but found entries for other days')
+      log.debug('DailyAnalytics: No entries for today, but found entries for other days')
     }
 
     // Calculate basic metrics

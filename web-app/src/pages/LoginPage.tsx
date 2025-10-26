@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { SecureLoginForm } from '../components/auth/SecureLoginForm'
 import { RegistrationForm } from '../components/auth/RegistrationForm'
+import { log } from '../utils/secureLogger'
 
 export const LoginPage: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false)
@@ -8,7 +9,7 @@ export const LoginPage: React.FC = () => {
   const handleLoginSuccess = () => {
     // Navigation is handled by the LoginForm component through redirect
     // This callback can be used for additional actions if needed
-    console.log('Login successful')
+    log.info('Login successful')
   }
 
   const handleRegistrationSuccess = () => {

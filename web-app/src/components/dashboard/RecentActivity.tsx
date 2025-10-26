@@ -5,6 +5,7 @@ import { formatDateTime, getVehicleTypeColor, getRevenueAmount, formatCurrency, 
 import { isCurrentlyParked } from '../../utils/statusHelpers'
 import { useBusinessSettings } from '../../hooks/useSettings'
 import type { ParkingEntry } from '../../types'
+import { log } from '../../utils/secureLogger'
 
 interface RecentActivityProps {
   entries: ParkingEntry[]
@@ -37,7 +38,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ entry, type, vehicleRates }
         )
         return currentFee
       } catch (error) {
-        console.warn('Error calculating current parking fee:', error)
+        log.warn('Error calculating current parking fee', error)
         return entry.calculatedFee || 0
       }
     }
@@ -59,7 +60,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ entry, type, vehicleRates }
         )
         return calculatedFee
       } catch (error) {
-        console.warn('Error calculating parking fee:', error)
+        log.warn('Error calculating parking fee', error)
       }
     }
 

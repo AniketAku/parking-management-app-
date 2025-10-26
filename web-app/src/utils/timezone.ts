@@ -2,6 +2,8 @@
  * Timezone utilities for proper date/time handling
  */
 
+import { log } from './secureLogger'
+
 /**
  * Get current local time as ISO string that preserves local timezone
  */
@@ -65,7 +67,7 @@ export const parseFromDatabase = (timestamp: string | null | undefined): Date =>
     }
     return parsed
   } catch (error) {
-    console.warn('Error parsing timestamp:', timestamp, error)
+    log.warn('Error parsing timestamp', { timestamp, error })
     return new Date()
   }
 }
@@ -105,7 +107,7 @@ export const formatTimestampForDisplay = (timestamp: string | Date | null | unde
       hour12: true,
     })
   } catch (error) {
-    console.warn('Error formatting timestamp:', timestamp, error)
+    log.warn('Error formatting timestamp', { timestamp, error })
     return 'Not available'
   }
 }

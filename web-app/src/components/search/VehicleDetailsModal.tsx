@@ -5,12 +5,12 @@ import {
   formatDateTime,
   formatCurrency,
   getVehicleTypeColor,
-  calculateDuration,
   getRevenueAmount,
   hasManualAmount,
   getRevenueSource
 } from '../../utils/helpers'
 import { isCurrentlyParked } from '../../utils/statusHelpers'
+import { UnifiedFeeCalculationService } from '../../services/UnifiedFeeCalculationService'
 import type { ParkingEntry } from '../../types'
 
 interface VehicleDetailsModalProps {
@@ -30,11 +30,11 @@ export const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
 }) => {
   if (!entry) return null
 
-
+  const feeService = UnifiedFeeCalculationService.getInstance()
   const duration = isCurrentlyParked(entry.status)
-    ? calculateDuration(entry.entryTime)
+    ? feeService.calculateDuration(entry.entryTime)
     : entry.exitTime
-      ? calculateDuration(entry.entryTime, entry.exitTime)
+      ? feeService.calculateDuration(entry.entryTime, entry.exitTime)
       : 'N/A'
 
   const getStatusBadge = () => {

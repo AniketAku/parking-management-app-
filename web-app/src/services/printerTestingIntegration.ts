@@ -7,6 +7,7 @@ import { printerDiagnosticService } from './printerDiagnosticService'
 import type { DiagnosticReport } from './printerDiagnosticService'
 import { printerConfigService } from './printerConfigService'
 import type { PrinterProfile } from '../types/printerConfig'
+import { log } from '../utils/secureLogger'
 
 export interface TestingIntegrationOptions {
   enableRealTimeMonitoring?: boolean
@@ -60,7 +61,7 @@ class PrinterTestingIntegration {
       
       return report
     } catch (error) {
-      console.error('Comprehensive test failed:', error)
+      log.error('Comprehensive test failed', error)
       
       if (options.notifyOnFailure) {
         this.createAlert({
@@ -88,7 +89,7 @@ class PrinterTestingIntegration {
       
       return result.success
     } catch (error) {
-      console.error('Quick connection test failed:', error)
+      log.error('Quick connection test failed', error)
       return false
     }
   }
@@ -107,7 +108,7 @@ class PrinterTestingIntegration {
     this.testSchedules.set(scheduleId, testSchedule)
     
     // TODO: Integrate with actual scheduling system (cron jobs, etc.)
-    console.log('Scheduled testing for printer:', profile.name, testSchedule)
+    log.info('Scheduled testing for printer', { printerName: profile.name, schedule: testSchedule })
     
     return scheduleId
   }
@@ -234,7 +235,7 @@ class PrinterTestingIntegration {
     }
     
     this.alerts.push(alert)
-    console.log('Created testing alert:', alert)
+    log.info('Created testing alert', { alert })
   }
 
   private async updateProfileWithTestResults(profile: PrinterProfile, report: DiagnosticReport): Promise<void> {
@@ -251,7 +252,7 @@ class PrinterTestingIntegration {
         updatedAt: new Date()
       })
     } catch (error) {
-      console.error('Failed to update profile with test results:', error)
+      log.error('Failed to update profile with test results', error)
     }
   }
 
@@ -349,13 +350,13 @@ class PrinterTestingIntegration {
           })
           results.set(profile.id, report)
         } catch (error) {
-          console.error(`Failed to test printer ${profile.name}:`, error)
+          log.error('Failed to test printer', { printerName: profile.name, error })
         }
       }
       
       return results
     } catch (error) {
-      console.error('Failed to test active printers:', error)
+      log.error('Failed to test active printers', error)
       return new Map()
     }
   }

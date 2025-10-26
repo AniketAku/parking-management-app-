@@ -38,85 +38,87 @@ export const ReportsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Reports & Analytics
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Generate and export parking reports
-          </p>
-        </div>
+      {/* Fixed Page Header */}
+      <div className="page-header">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Reports & Analytics
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Generate and export parking reports
+            </p>
+          </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-3">
-          {performanceMetrics.totalReportsGenerated > 0 && (
-            <div className="text-right">
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {performanceMetrics.totalReportsGenerated} reports
+          {/* Quick Actions */}
+          <div className="flex items-center gap-3">
+            {performanceMetrics.totalReportsGenerated > 0 && (
+              <div className="text-right">
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {performanceMetrics.totalReportsGenerated} reports
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {formatTime(performanceMetrics.averageGenerationTime)} avg
+                </div>
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {formatTime(performanceMetrics.averageGenerationTime)} avg
-              </div>
-            </div>
-          )}
+            )}
 
-          {cacheStatistics.entries > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={clearCache}
-              className="text-xs"
-            >
-              Clear Cache
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <h4 className="text-sm font-medium text-red-800 dark:text-red-300">Report Generation Error</h4>
-              <p className="text-sm text-red-700 dark:text-red-400 mt-1">{error}</p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={clearError}
-              className="text-xs"
-            >
-              Dismiss
-            </Button>
+            {cacheStatistics.entries > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={clearCache}
+                className="text-xs"
+              >
+                Clear Cache
+              </Button>
+            )}
           </div>
         </div>
-      )}
 
-      {/* View Toggle */}
-      <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-        <button
-          onClick={() => setActiveView('generator')}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeView === 'generator'
-              ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-          }`}
-        >
-          Report Generator
-        </button>
-        <button
-          onClick={() => setActiveView('help')}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeView === 'help'
-              ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-          }`}
-        >
-          Help & Guide
-        </button>
+        {/* Error Display */}
+        {error && (
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-red-800 dark:text-red-300">Report Generation Error</h4>
+                <p className="text-sm text-red-700 dark:text-red-400 mt-1">{error}</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={clearError}
+                className="text-xs"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* View Toggle */}
+        <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <button
+            onClick={() => setActiveView('generator')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeView === 'generator'
+                ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            Report Generator
+          </button>
+          <button
+            onClick={() => setActiveView('help')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeView === 'help'
+                ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            Help & Guide
+          </button>
+        </div>
       </div>
 
       {/* Scrollable Content Area */}

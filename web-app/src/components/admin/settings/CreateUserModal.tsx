@@ -7,6 +7,7 @@ import React, { useState } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { toast } from 'react-hot-toast'
 import { UserService, type UserRegistration } from '../../../services/userService'
+import { log } from '../../../utils/secureLogger'
 
 interface CreateUserModalProps {
   isOpen: boolean
@@ -110,7 +111,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
       onClose()
     } catch (error) {
       toast.error('Failed to create user. Please try again.')
-      console.error('Create user error:', error)
+      log.error('Create user error', error)
     } finally {
       setIsLoading(false)
     }

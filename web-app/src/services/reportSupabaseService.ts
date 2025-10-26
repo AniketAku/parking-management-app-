@@ -2,6 +2,7 @@
 
 import { supabase } from '../lib/supabase'
 import { format, startOfDay, endOfDay } from 'date-fns'
+import { log } from '../utils/secureLogger'
 import type {
   ParkingEntry,
   DateBoundary,
@@ -135,7 +136,7 @@ class ReportSupabaseService {
       }
 
     } catch (error) {
-      console.error('Error fetching parking entries for report:', error)
+      log.error('Error fetching parking entries for report', error)
       throw error
     }
   }
@@ -256,7 +257,7 @@ class ReportSupabaseService {
       }
 
     } catch (error) {
-      console.error('Error fetching report aggregations:', error)
+      log.error('Error fetching report aggregations', error)
       throw error
     }
   }
@@ -316,7 +317,7 @@ class ReportSupabaseService {
       }
 
     } catch (error) {
-      console.error('Error fetching hourly breakdown:', error)
+      log.error('Error fetching hourly breakdown', error)
       // Fallback to client-side processing
       return this.fallbackHourlyBreakdown(options)
     }

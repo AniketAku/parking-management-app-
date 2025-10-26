@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ParkingEntry } from '../types'
 import { useParkingStore } from '../stores/parkingStore'
+import { log } from '../utils/secureLogger'
 
 interface AnalyticsData {
   entries: ParkingEntry[]
@@ -32,7 +33,7 @@ export const useAnalyticsData = (): AnalyticsData => {
       // Try to load from store first
       await loadEntries()
     } catch (error) {
-      console.warn('Failed to load from store, using fallback data:', error)
+      log.warn('Failed to load from store, using fallback data', error)
 
       // Fallback to demo data if store fails
       const fallbackEntries: ParkingEntry[] = generateFallbackData()
@@ -49,7 +50,7 @@ export const useAnalyticsData = (): AnalyticsData => {
     // Use store data when available
     if (!storeLoading) {
       if (storeError) {
-        console.warn('Store error detected, using fallback data:', storeError)
+        log.warn('Store error detected, using fallback data', { error: storeError })
         const fallbackEntries = generateFallbackData()
         setAnalyticsState({
           entries: fallbackEntries,

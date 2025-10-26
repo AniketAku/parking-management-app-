@@ -5,6 +5,7 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/Button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
+import { log } from '../../utils/secureLogger'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
@@ -256,7 +257,7 @@ const AdvancedAnalyticsDashboard: React.FC = () => {
         
         const dashboardElement = document.querySelector('[data-dashboard-content]') as HTMLElement
         if (!dashboardElement) {
-          console.error('Dashboard element not found for PDF export')
+          log.error('Dashboard element not found for PDF export')
           return
         }
         
@@ -305,10 +306,10 @@ const AdvancedAnalyticsDashboard: React.FC = () => {
         
         pdf.save(`parking-dashboard-${timestamp}.pdf`)
       }
-      
-      console.log(`Successfully exported dashboard as ${format}`)
+
+      log.info('Successfully exported dashboard', { format })
     } catch (error) {
-      console.error(`Error exporting dashboard as ${format}:`, error)
+      log.error('Error exporting dashboard', { format, error })
     }
   }
   

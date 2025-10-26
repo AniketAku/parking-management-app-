@@ -3,6 +3,8 @@
  * This utility bypasses timezone conversion problems by directly formatting timestamps
  */
 
+import { log } from './secureLogger'
+
 /**
  * Get current timestamp for parking operations (fixed for IST)
  */
@@ -58,7 +60,7 @@ export const formatParkingTime = (timestamp: string | Date | null | undefined): 
     
     return `${day} ${month} ${year}, ${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
   } catch (error) {
-    console.warn('Error formatting parking time:', timestamp, error);
+    log.warn('Error formatting parking time', { timestamp, error });
     return 'Not available';
   }
 }

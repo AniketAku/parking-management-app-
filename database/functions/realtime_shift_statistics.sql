@@ -59,7 +59,6 @@ BEGIN
         'shift_id', current_shift_id,
         'vehicle_number', NEW.vehicle_number,
         'entry_time', NEW.entry_time,
-        'space_number', NEW.space_number,
         'timestamp', NOW()
       )::text
     );
@@ -116,8 +115,8 @@ BEGIN
      NEW.parking_fee != OLD.parking_fee OR
      NEW.payment_mode != OLD.payment_mode THEN
 
-    -- Calculate revenue changes
-    IF NEW.payment_status = 'paid' AND OLD.payment_status != 'paid' THEN
+    -- Calculate revenue changes (using 'Paid' to match CHECK constraint)
+    IF NEW.payment_status = 'Paid' AND OLD.payment_status != 'Paid' THEN
       revenue_change := COALESCE(NEW.parking_fee, 0);
 
       IF NEW.payment_mode = 'cash' THEN
@@ -126,7 +125,7 @@ BEGIN
         digital_change := revenue_change;
       END IF;
 
-    ELSIF OLD.payment_status = 'paid' AND NEW.payment_status != 'paid' THEN
+    ELSIF OLD.payment_status = 'Paid' AND NEW.payment_status != 'Paid' THEN
       -- Payment was reversed
       revenue_change := -COALESCE(OLD.parking_fee, 0);
 
@@ -136,7 +135,7 @@ BEGIN
         digital_change := revenue_change;
       END IF;
 
-    ELSIF NEW.payment_status = 'paid' AND OLD.payment_status = 'paid' THEN
+    ELSIF NEW.payment_status = 'Paid' AND OLD.payment_status = 'Paid' THEN
       -- Payment amount or method changed
       revenue_change := COALESCE(NEW.parking_fee, 0) - COALESCE(OLD.parking_fee, 0);
 

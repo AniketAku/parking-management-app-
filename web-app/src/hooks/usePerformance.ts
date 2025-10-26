@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { performanceMonitor, PerformanceMetrics, MemoryTracker } from '../utils/optimizedPerformanceMonitor'
+import { log } from '../utils/secureLogger'
 
 export interface UsePerformanceOptions {
   trackRenders?: boolean
@@ -62,9 +63,13 @@ export const usePerformance = (options: UsePerformanceOptions = {}): Performance
     if (trackRenders) {
       renderCountRef.current++
       const renderTime = performance.now()
-      
+
       if (renderCountRef.current > 1) {
-        console.log(`🔄 ${componentName} render #${renderCountRef.current} at ${renderTime.toFixed(2)}ms`)
+        log.debug('Component render', {
+          component: componentName,
+          renderNumber: renderCountRef.current,
+          time: `${renderTime.toFixed(2)}ms`
+        })
       }
     }
   })
@@ -94,7 +99,7 @@ export const usePerformance = (options: UsePerformanceOptions = {}): Performance
       }
     }, reportInterval)
 
-    console.log(`📊 Performance monitoring started for ${componentName}`)
+    log.info('Performance monitoring started', { component: componentName })
   }, [isMonitoring, trackMemory, reportInterval, componentName])
 
   const stopMonitoring = useCallback(() => {
@@ -109,13 +114,13 @@ export const usePerformance = (options: UsePerformanceOptions = {}): Performance
       intervalRef.current = undefined
     }
 
-    console.log(`⏹️ Performance monitoring stopped for ${componentName}`)
+    log.info('Performance monitoring stopped', { component: componentName })
   }, [isMonitoring, componentName])
 
   const clearMetrics = useCallback(() => {
     performanceMonitor.clearMetrics()
     setMetrics([])
-    console.log(`🧹 Metrics cleared for ${componentName}`)
+    log.debug('Metrics cleared', { component: componentName })
   }, [componentName])
 
   const measureOperation = useCallback(async <T>(
@@ -129,14 +134,21 @@ export const usePerformance = (options: UsePerformanceOptions = {}): Performance
       const result = await operation()
       const endTime = performance.now()
       const endMemory = memoryTracker.current.getCurrentUsage()
-      
-      console.log(`⚡ ${name} completed in ${(endTime - startTime).toFixed(2)}ms`)
-      console.log(`🧠 Memory delta: ${((endMemory - startMemory) / 1024 / 1024).toFixed(2)}MB`)
-      
+
+      log.debug('Operation completed', {
+        operation: name,
+        duration: `${(endTime - startTime).toFixed(2)}ms`,
+        memoryDelta: `${((endMemory - startMemory) / 1024 / 1024).toFixed(2)}MB`
+      })
+
       return result
     } catch (error) {
       const endTime = performance.now()
-      console.error(`❌ ${name} failed after ${(endTime - startTime).toFixed(2)}ms:`, error)
+      log.error('Operation failed', {
+        operation: name,
+        duration: `${(endTime - startTime).toFixed(2)}ms`,
+        error
+      })
       throw error
     }
   }, [])
@@ -176,7 +188,11 @@ export const useRenderPerformance = (componentName: string) => {
     
     if (lastRenderTime.current > 0) {
       const timeSinceLastRender = currentTime - lastRenderTime.current
-      console.log(`🔄 ${componentName} render #${renderCount.current} (${timeSinceLastRender.toFixed(2)}ms since last)`)
+      log.debug('Component render', {
+        component: componentName,
+        renderNumber: renderCount.current,
+        timeSinceLastRender: `${timeSinceLastRender.toFixed(2)}ms`
+      })
     }
     
     lastRenderTime.current = currentTime
@@ -224,13 +240,16 @@ export const useNetworkPerformance = () => {
         slowestRequest: Math.max(prev.slowestRequest, responseTime),
         fastestRequest: Math.min(prev.fastestRequest, responseTime),
       }))
-      
-      console.log(`🌐 Request to ${url} completed in ${responseTime.toFixed(2)}ms`)
+
+      log.debug('Network request completed', {
+        url,
+        responseTime: `${responseTime.toFixed(2)}ms`
+      })
       return result
     } catch (error) {
       const endTime = performance.now()
       const responseTime = endTime - startTime
-      
+
       setNetworkMetrics(prev => ({
         totalRequests: prev.totalRequests + 1,
         failedRequests: prev.failedRequests + 1,
@@ -238,8 +257,12 @@ export const useNetworkPerformance = () => {
         slowestRequest: Math.max(prev.slowestRequest, responseTime),
         fastestRequest: prev.fastestRequest === Infinity ? responseTime : Math.min(prev.fastestRequest, responseTime),
       }))
-      
-      console.error(`❌ Request to ${url} failed after ${responseTime.toFixed(2)}ms:`, error)
+
+      log.error('Network request failed', {
+        url,
+        responseTime: `${responseTime.toFixed(2)}ms`,
+        error
+      })
       throw error
     }
   }, [])
@@ -322,10 +345,10 @@ export const useAccessibilityPerformance = () => {
     await themeSwitchFn()
     const endTime = performance.now()
     const switchTime = endTime - startTime
-    
+
     setA11yMetrics(prev => ({ ...prev, themeSwichTime: switchTime }))
-    console.log(`🎨 Theme switch completed in ${switchTime.toFixed(2)}ms`)
-    
+    log.debug('Theme switch completed', { switchTime: `${switchTime.toFixed(2)}ms` })
+
     return switchTime
   }, [])
 
@@ -337,7 +360,7 @@ export const useAccessibilityPerformance = () => {
       const endTime = performance.now()
       const focusTime = endTime - startTime
       setA11yMetrics(prev => ({ ...prev, focusDelay: focusTime }))
-      console.log(`🎯 Focus delay: ${focusTime.toFixed(2)}ms`)
+      log.debug('Focus delay', { focusTime: `${focusTime.toFixed(2)}ms` })
     })
   }, [])
 
@@ -350,7 +373,7 @@ export const useAccessibilityPerformance = () => {
         const endTime = performance.now()
         const responseTime = endTime - startTime
         setA11yMetrics(prev => ({ ...prev, keyboardResponseTime: responseTime }))
-        console.log(`⌨️ Keyboard response time: ${responseTime.toFixed(2)}ms`)
+        log.debug('Keyboard response time', { responseTime: `${responseTime.toFixed(2)}ms` })
       })
     }
   }, [])

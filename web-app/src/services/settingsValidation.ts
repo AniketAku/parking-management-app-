@@ -20,13 +20,14 @@ import type {
   SecuritySettings,
   UserManagementSettings,
   NotificationSettings,
-  ReportingSettings
+  ReportingSettings,
+  SettingValue
 } from '../types/settings'
 
 export interface ValidationRule {
   name: string
   description: string
-  validator: (value: any, setting: AppSetting, context?: ValidationContext) => ValidationRuleResult
+  validator: (value: SettingValue, setting: AppSetting, context?: ValidationContext) => ValidationRuleResult
   categories?: SettingCategory[]
   severity: 'error' | 'warning'
   async?: boolean
@@ -36,13 +37,13 @@ export interface ValidationRuleResult {
   isValid: boolean
   message?: string
   suggestion?: string
-  details?: Record<string, any>
+  details?: Record<string, SettingValue>
 }
 
 export interface ValidationContext {
   userId?: string
   locationId?: string
-  relatedSettings?: Record<string, any>
+  relatedSettings?: Record<string, SettingValue>
   environment?: 'development' | 'staging' | 'production'
   performanceMode?: boolean
 }
@@ -64,8 +65,8 @@ export interface ValidationError {
   category: SettingCategory
   rule: string
   message: string
-  value: any
-  details?: Record<string, any>
+  value: SettingValue
+  details?: Record<string, SettingValue>
 }
 
 export interface ValidationWarning {
@@ -81,7 +82,7 @@ export interface ValidationSuggestion {
   key: string
   category: SettingCategory
   message: string
-  suggestedValue?: any
+  suggestedValue?: SettingValue
   reason: string
   priority: 'low' | 'medium' | 'high'
 }
@@ -92,7 +93,7 @@ export interface ValidationSuggestion {
  */
 export class SettingsValidationService {
   private validationRules: Map<string, ValidationRule> = new Map()
-  private typeValidators: Map<SettingDataType, (value: any) => ValidationRuleResult> = new Map()
+  private typeValidators: Map<SettingDataType, (value: SettingValue) => ValidationRuleResult> = new Map()
   private categoryValidators: Map<SettingCategory, ValidationRule[]> = new Map()
 
   constructor() {
@@ -316,24 +317,24 @@ export class SettingsValidationService {
   // Private validation methods
 
   private initializeTypeValidators(): void {
-    this.typeValidators.set('string', (value: any) => ({
+    this.typeValidators.set('string', (value: SettingValue) => ({
       isValid: typeof value === 'string',
       message: typeof value === 'string' ? undefined : `Expected string, got ${typeof value}`
     }))
 
-    this.typeValidators.set('number', (value: any) => ({
+    this.typeValidators.set('number', (value: SettingValue) => ({
       isValid: typeof value === 'number' && !isNaN(value) && isFinite(value),
-      message: typeof value === 'number' && !isNaN(value) && isFinite(value) 
-        ? undefined 
+      message: typeof value === 'number' && !isNaN(value) && isFinite(value)
+        ? undefined
         : `Expected valid number, got ${typeof value}`
     }))
 
-    this.typeValidators.set('boolean', (value: any) => ({
+    this.typeValidators.set('boolean', (value: SettingValue) => ({
       isValid: typeof value === 'boolean',
       message: typeof value === 'boolean' ? undefined : `Expected boolean, got ${typeof value}`
     }))
 
-    this.typeValidators.set('json', (value: any) => {
+    this.typeValidators.set('json', (value: SettingValue) => {
       try {
         if (typeof value === 'object' && value !== null) {
           JSON.stringify(value) // Test serializability
@@ -345,15 +346,15 @@ export class SettingsValidationService {
       }
     })
 
-    this.typeValidators.set('array', (value: any) => ({
+    this.typeValidators.set('array', (value: SettingValue) => ({
       isValid: Array.isArray(value),
       message: Array.isArray(value) ? undefined : `Expected array, got ${typeof value}`
     }))
 
-    this.typeValidators.set('enum', (value: any) => ({
+    this.typeValidators.set('enum', (value: SettingValue) => ({
       isValid: typeof value === 'string' || typeof value === 'number',
-      message: typeof value === 'string' || typeof value === 'number' 
-        ? undefined 
+      message: typeof value === 'string' || typeof value === 'number'
+        ? undefined
         : 'Expected string or number for enum value'
     }))
   }
@@ -363,7 +364,7 @@ export class SettingsValidationService {
     this.validationRules.set('vehicle_rates_positive', {
       name: 'vehicle_rates_positive',
       description: 'Vehicle rates must be positive numbers',
-      validator: (value: any) => {
+      validator: (value: SettingValue) => {
         if (typeof value !== 'object' || Array.isArray(value) || value === null) {
           return { isValid: false, message: 'Vehicle rates must be an object' }
         }
@@ -387,7 +388,7 @@ export class SettingsValidationService {
     this.validationRules.set('color_format', {
       name: 'color_format',
       description: 'Colors must be valid hex, rgb, or CSS color names',
-      validator: (value: any) => {
+      validator: (value: SettingValue) => {
         const colorRegex = /^(#[0-9A-Fa-f]{3,6}|rgb\(\d+,\s*\d+,\s*\d+\)|rgba\(\d+,\s*\d+,\s*\d+,\s*[\d.]+\)|[a-zA-Z]+)$/
         if (typeof value === 'string' && colorRegex.test(value)) {
           return { isValid: true }
@@ -406,7 +407,7 @@ export class SettingsValidationService {
     this.validationRules.set('performance_budgets', {
       name: 'performance_budgets',
       description: 'Performance budgets should be within reasonable limits',
-      validator: (value: any, setting: AppSetting) => {
+      validator: (value: SettingValue, setting: AppSetting) => {
         if (typeof value !== 'number') {
           return { isValid: false, message: 'Performance budget must be a number' }
         }
@@ -438,7 +439,7 @@ export class SettingsValidationService {
     this.validationRules.set('password_strength', {
       name: 'password_strength',
       description: 'Password requirements should be secure but usable',
-      validator: (value: any, setting: AppSetting) => {
+      validator: (value: SettingValue, setting: AppSetting) => {
         if (setting.key === 'password_min_length') {
           if (typeof value !== 'number' || value < 8) {
             return {
@@ -464,7 +465,7 @@ export class SettingsValidationService {
     this.validationRules.set('timeout_reasonable', {
       name: 'timeout_reasonable',
       description: 'Timeout values should be reasonable for user experience',
-      validator: (value: any, setting: AppSetting) => {
+      validator: (value: SettingValue, setting: AppSetting) => {
         if (!setting.key.includes('timeout') || typeof value !== 'number') {
           return { isValid: true }
         }
@@ -512,7 +513,7 @@ export class SettingsValidationService {
     }
   }
 
-  private validateType(value: any, dataType: SettingDataType): ValidationRuleResult {
+  private validateType(value: SettingValue, dataType: SettingDataType): ValidationRuleResult {
     const validator = this.typeValidators.get(dataType)
     if (!validator) {
       return {

@@ -5,6 +5,7 @@ import { generateCsv, mkConfig, download, asString } from 'export-to-csv'
 import jsPDF from 'jspdf'
 import * as XLSX from 'xlsx'
 import { api } from './supabaseApi'
+import { log } from '../utils/secureLogger'
 import type {
   ReportType,
   QuickSelectOption,
@@ -149,10 +150,10 @@ class ReportGenerationService {
   }> {
     const startTime = Date.now()
 
-    console.log('📊 REPORT SERVICE - Fetching data for date range:', {
+    log.debug('Fetching data for date range', {
       startDate: dateRange.startDate.toISOString(),
       endDate: dateRange.endDate.toISOString(),
-      criteria: criteria
+      criteria
     })
 
     try {
@@ -162,7 +163,7 @@ class ReportGenerationService {
         dateTo: dateRange.endDate.toISOString()
       }, 1, 10000) // Large limit to get all data
 
-      console.log('📊 REPORT SERVICE - Received entries from API:', {
+      log.debug('Received entries from API', {
         totalEntries: entries.length,
         firstEntry: entries[0] ? {
           vehicleNumber: entries[0].vehicleNumber,
@@ -212,17 +213,17 @@ class ReportGenerationService {
         // expenses = await this.fetchExpenses(dateRange)
       }
 
-      console.log(`Data fetch completed in ${Date.now() - startTime}ms`)
+      log.info('Data fetch completed', { durationMs: Date.now() - startTime })
       return { parkingEntries: filteredEntries, expenses }
 
     } catch (error) {
-      console.warn('API data fetch failed, using fallback data for reports:', error)
+      log.warn('API data fetch failed, using fallback data for reports', error)
 
       // Generate fallback data for reports when API fails
       const fallbackEntries = this.generateFallbackReportData(dateRange, criteria)
       const fallbackExpenses: ExpenseEntry[] = criteria.includeExpenses ? this.generateFallbackExpenses(dateRange) : []
 
-      console.log(`Fallback data generated in ${Date.now() - startTime}ms`)
+      log.info('Fallback data generated', { durationMs: Date.now() - startTime })
       return { parkingEntries: fallbackEntries, expenses: fallbackExpenses }
     }
   }
@@ -429,7 +430,7 @@ class ReportGenerationService {
     const activeSessions = parkingEntries.filter(e => e.status === 'Active').length
     const completedSessions = parkingEntries.filter(e => e.status === 'Exited').length
 
-    console.log('🔍 REPORT DEBUG - Daily report entries:', {
+    log.debug('Daily report entries', {
       total: parkingEntries.length,
       exited: completedSessions,
       active: activeSessions
@@ -440,7 +441,7 @@ class ReportGenerationService {
       .reduce((sum, e) => {
         // ✅ FIX: Use parkingFee which has fallback logic (parking_fee || actual_fee || calculated_fee)
         const feeAmount = e.parkingFee || 0
-        console.log('🔍 REPORT DEBUG - Revenue entry:', {
+        log.debug('Revenue entry', {
           vehicleNumber: e.vehicleNumber,
           status: e.status,
           parkingFee: e.parkingFee,
@@ -452,7 +453,7 @@ class ReportGenerationService {
         return sum + feeAmount
       }, 0)
 
-    console.log('🔍 REPORT DEBUG - Final revenue:', revenue)
+    log.debug('Final revenue', { revenue })
 
     const expenseTotal = expenses.reduce((sum, e) => sum + e.amount, 0)
 
@@ -783,7 +784,7 @@ class ReportGenerationService {
       }
 
     } catch (error) {
-      console.error('Report generation failed:', error)
+      log.error('Report generation failed', error)
       return {
         success: false,
         reportId: '',
@@ -1124,9 +1125,9 @@ class ReportGenerationService {
 
           addSectionHeader('Daily Summary')
           addKeyValue('Date', dailyData.date)
-          addKeyValue('Total Sessions', dailyData.totalSessions)
-          addKeyValue('Active Sessions', dailyData.activeSessions)
-          addKeyValue('Completed Sessions', dailyData.completedSessions)
+          addKeyValue('Total Vehicle Movement', dailyData.totalSessions)
+          addKeyValue('Active/Parked Vehicles', dailyData.activeSessions)
+          addKeyValue('Vehicle Exits', dailyData.completedSessions)
           addKeyValue('Revenue', `₹${dailyData.revenue.toFixed(2)}`)
           addKeyValue('Expenses', `₹${dailyData.expenses.toFixed(2)}`)
           addKeyValue('Net Income', `₹${dailyData.netIncome.toFixed(2)}`)
@@ -1172,7 +1173,7 @@ class ReportGenerationService {
           addSectionHeader('Weekly Summary')
           addKeyValue('Week Start', weeklyData.weekStart)
           addKeyValue('Week End', weeklyData.weekEnd)
-          addKeyValue('Total Sessions', weeklyData.weeklyTotals.totalSessions)
+          addKeyValue('Total Vehicle Movement', weeklyData.weeklyTotals.totalSessions)
           addKeyValue('Total Revenue', `₹${weeklyData.weeklyTotals.totalRevenue.toFixed(2)}`)
           addKeyValue('Total Expenses', `₹${weeklyData.weeklyTotals.totalExpenses.toFixed(2)}`)
           addKeyValue('Net Income', `₹${weeklyData.weeklyTotals.netIncome.toFixed(2)}`)
@@ -1216,7 +1217,7 @@ class ReportGenerationService {
           addSectionHeader('Monthly Summary')
           addKeyValue('Month', monthlyData.month)
           addKeyValue('Year', monthlyData.year)
-          addKeyValue('Total Sessions', monthlyData.monthlyTotals.totalSessions)
+          addKeyValue('Total Vehicle Movement', monthlyData.monthlyTotals.totalSessions)
           addKeyValue('Total Revenue', `₹${monthlyData.monthlyTotals.totalRevenue.toFixed(2)}`)
           addKeyValue('Total Expenses', `₹${monthlyData.monthlyTotals.totalExpenses.toFixed(2)}`)
           addKeyValue('Net Income', `₹${monthlyData.monthlyTotals.netIncome.toFixed(2)}`)
@@ -1244,7 +1245,7 @@ class ReportGenerationService {
           addKeyValue('Start Date', customData.startDate)
           addKeyValue('End Date', customData.endDate)
           addKeyValue('Total Days', customData.totalDays)
-          addKeyValue('Total Sessions', customData.summary.totalSessions)
+          addKeyValue('Total Vehicle Movement', customData.summary.totalSessions)
           addKeyValue('Total Revenue', `₹${customData.summary.totalRevenue.toFixed(2)}`)
           addKeyValue('Net Income', `₹${customData.summary.netIncome.toFixed(2)}`)
           addKeyValue('Avg Revenue/Session', `₹${customData.summary.averageRevenuePerSession.toFixed(2)}`)
@@ -1289,7 +1290,7 @@ class ReportGenerationService {
       }
 
     } catch (error) {
-      console.error('PDF export failed:', error)
+      log.error('PDF export failed', error)
       return {
         success: false,
         fileName: '',
@@ -1326,9 +1327,9 @@ class ReportGenerationService {
           const dailyData = report.data as DailyReportContent
           summaryData.push(
             { 'Field': 'Date', 'Value': dailyData.date },
-            { 'Field': 'Total Sessions', 'Value': dailyData.totalSessions },
-            { 'Field': 'Active Sessions', 'Value': dailyData.activeSessions },
-            { 'Field': 'Completed Sessions', 'Value': dailyData.completedSessions },
+            { 'Field': 'Total Vehicle Movement', 'Value': dailyData.totalSessions },
+            { 'Field': 'Active/Parked Vehicles', 'Value': dailyData.activeSessions },
+            { 'Field': 'Vehicle Exits', 'Value': dailyData.completedSessions },
             { 'Field': 'Revenue', 'Value': dailyData.revenue },
             { 'Field': 'Expenses', 'Value': dailyData.expenses },
             { 'Field': 'Net Income', 'Value': dailyData.netIncome }
@@ -1381,7 +1382,7 @@ class ReportGenerationService {
           summaryData.push(
             { 'Field': 'Week Start', 'Value': weeklyData.weekStart },
             { 'Field': 'Week End', 'Value': weeklyData.weekEnd },
-            { 'Field': 'Total Sessions', 'Value': weeklyData.weeklyTotals.totalSessions },
+            { 'Field': 'Total Vehicle Movement', 'Value': weeklyData.weeklyTotals.totalSessions },
             { 'Field': 'Total Revenue', 'Value': weeklyData.weeklyTotals.totalRevenue },
             { 'Field': 'Total Expenses', 'Value': weeklyData.weeklyTotals.totalExpenses },
             { 'Field': 'Net Income', 'Value': weeklyData.weeklyTotals.netIncome },
@@ -1398,9 +1399,9 @@ class ReportGenerationService {
             const dailySheet = XLSX.utils.json_to_sheet(
               weeklyData.dailyBreakdown.map(day => ({
                 'Date': day.date,
-                'Total Sessions': day.totalSessions,
-                'Active Sessions': day.activeSessions,
-                'Completed Sessions': day.completedSessions,
+                'Total Vehicle Movement': day.totalSessions,
+                'Active/Parked Vehicles': day.activeSessions,
+                'Vehicle Exits': day.completedSessions,
                 'Revenue': day.revenue,
                 'Expenses': day.expenses,
                 'Net Income': day.netIncome
@@ -1427,7 +1428,7 @@ class ReportGenerationService {
           summaryData.push(
             { 'Field': 'Month', 'Value': monthlyData.month },
             { 'Field': 'Year', 'Value': monthlyData.year },
-            { 'Field': 'Total Sessions', 'Value': monthlyData.monthlyTotals.totalSessions },
+            { 'Field': 'Total Vehicle Movement', 'Value': monthlyData.monthlyTotals.totalSessions },
             { 'Field': 'Total Revenue', 'Value': monthlyData.monthlyTotals.totalRevenue },
             { 'Field': 'Total Expenses', 'Value': monthlyData.monthlyTotals.totalExpenses },
             { 'Field': 'Net Income', 'Value': monthlyData.monthlyTotals.netIncome },
@@ -1485,7 +1486,7 @@ class ReportGenerationService {
             { 'Field': 'Start Date', 'Value': customData.startDate },
             { 'Field': 'End Date', 'Value': customData.endDate },
             { 'Field': 'Total Days', 'Value': customData.totalDays },
-            { 'Field': 'Total Sessions', 'Value': customData.summary.totalSessions },
+            { 'Field': 'Total Vehicle Movement', 'Value': customData.summary.totalSessions },
             { 'Field': 'Total Revenue', 'Value': customData.summary.totalRevenue },
             { 'Field': 'Net Income', 'Value': customData.summary.netIncome },
             { 'Field': 'Avg Revenue/Session', 'Value': parseFloat(customData.summary.averageRevenuePerSession.toFixed(2)) },
@@ -1500,9 +1501,9 @@ class ReportGenerationService {
             const dailySheet = XLSX.utils.json_to_sheet(
               customData.dailyBreakdown.map(day => ({
                 'Date': day.date,
-                'Total Sessions': day.totalSessions,
-                'Active Sessions': day.activeSessions,
-                'Completed Sessions': day.completedSessions,
+                'Total Vehicle Movement': day.totalSessions,
+                'Active/Parked Vehicles': day.activeSessions,
+                'Vehicle Exits': day.completedSessions,
                 'Revenue': day.revenue,
                 'Expenses': day.expenses,
                 'Net Income': day.netIncome
@@ -1575,7 +1576,7 @@ class ReportGenerationService {
       }
 
     } catch (error) {
-      console.error('Excel export failed:', error)
+      log.error('Excel export failed', error)
       return {
         success: false,
         fileName: '',
@@ -1630,7 +1631,7 @@ class ReportGenerationService {
       }
 
     } catch (error) {
-      console.error('CSV export failed:', error)
+      log.error('CSV export failed', error)
       return {
         success: false,
         fileName: '',

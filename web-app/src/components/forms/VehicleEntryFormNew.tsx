@@ -11,6 +11,7 @@ import { usePrintSettings } from '../../hooks/usePrintSettings'
 import parkingEntryService from '../../services/parkingEntryService'
 import toast from 'react-hot-toast'
 import { useErrorHandler } from '../../hooks/useErrorHandler'
+import { log } from '../../utils/secureLogger'
 
 interface VehicleEntryFormProps {
   onSuccess?: (entry: ParkingEntry) => void
@@ -34,7 +35,7 @@ export const VehicleEntryFormNew: React.FC<VehicleEntryFormProps> = ({
     getVehicleRate
   } = useBusinessSettings()
 
-  console.log('🔍 VehicleEntryForm - Business Settings State:', {
+  log.debug('VehicleEntryForm - Business Settings State', {
     vehicleRates,
     vehicleTypes,
     settingsLoading,
@@ -92,7 +93,7 @@ export const VehicleEntryFormNew: React.FC<VehicleEntryFormProps> = ({
     ]
   }, [vehicleTypes])
 
-  console.log('🚗 Vehicle types options:', vehicleTypeOptions)
+  log.debug('Vehicle types options', { vehicleTypeOptions })
 
   // Calculate daily rate for selected vehicle type
   const dailyRate = useMemo(() => {
@@ -164,7 +165,7 @@ export const VehicleEntryFormNew: React.FC<VehicleEntryFormProps> = ({
         throw new Error(result.error || 'Failed to create vehicle entry')
       }
     } catch (error) {
-      console.error('Vehicle entry creation failed:', error)
+      log.error('Vehicle entry creation failed', error)
       handleError(error, 'Failed to create vehicle entry')
     } finally {
       setIsSubmitting(false)

@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { 
-  PrintJob, 
-  PrintQueueStatus, 
-  PrintJobCreate, 
+import type {
+  PrintJob,
+  PrintQueueStatus,
+  PrintJobCreate,
   PrinterProfile,
-  PrintHistoryFilters 
+  PrintHistoryFilters
 } from '../types/printQueue';
 import { printQueueApi, printQueueOperations } from '../services/printQueueApi';
+import { log } from '../utils/secureLogger';
 
 interface UsePrintQueueOptions {
   autoRefresh?: boolean;
@@ -137,7 +138,7 @@ export const usePrintQueue = ({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load print queue data';
       setError(errorMessage);
-      console.error('Print queue error:', err);
+      log.error('Print queue error', err);
     } finally {
       setLoading(false);
     }
@@ -148,7 +149,7 @@ export const usePrintQueue = ({
       const printersData = await printQueueApi.getAvailablePrinters();
       setPrinters(printersData);
     } catch (err) {
-      console.error('Failed to load printers:', err);
+      log.error('Failed to load printers', err);
     }
   }, []);
 
@@ -251,7 +252,7 @@ export const usePrintQueueStatus = (refreshInterval: number = 30000) => {
         const statusData = await printQueueApi.getQueueStatus();
         setStatus(statusData);
       } catch (err) {
-        console.error('Failed to load print queue status:', err);
+        log.error('Failed to load print queue status', err);
       } finally {
         setLoading(false);
       }

@@ -4,12 +4,13 @@
  * auto-detection, and adaptive settings based on usage patterns and business intelligence.
  */
 
-import type { 
-  AppSetting, 
-  BusinessSettings, 
-  SettingCategory, 
+import { log } from '../utils/secureLogger'
+import type {
+  AppSetting,
+  BusinessSettings,
+  SettingCategory,
   AllSettings,
-  VehicleRates 
+  VehicleRates
 } from '../types/settings'
 
 interface ConfigurationContext {
@@ -245,7 +246,7 @@ export class SmartConfigurationService {
 
       return context
     } catch (error) {
-      console.warn('Failed to detect configuration context:', error)
+      log.warn('Failed to detect configuration context', error)
       return context
     }
   }

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { AuthUser, AuthTokens, LoginCredentials } from '../types'
+import { log } from '../utils/secureLogger'
 
 export interface AuthResult {
   user: AuthUser
@@ -69,7 +70,7 @@ class SecureAuthService {
         })
 
       if (authError) {
-        console.error('Authentication RPC error:', authError)
+        log.error('Authentication RPC error', authError)
         throw new Error('Authentication service error')
       }
 
@@ -93,10 +94,10 @@ class SecureAuthService {
         phone: result.phone
       }
 
-      // 🔍 DEBUG: Log the exact user ID being stored
-      console.log('🔍 [LOGIN DEBUG] RPC returned user_id:', result.user_id)
-      console.log('🔍 [LOGIN DEBUG] Full RPC result:', result)
-      console.log('🔍 [LOGIN DEBUG] User profile created:', userProfile)
+      // DEBUG: Log the exact user ID being stored
+      log.debug('RPC returned user_id', { userId: result.user_id })
+      log.debug('Full RPC result', result)
+      log.debug('User profile created', userProfile)
 
       // Create secure user object
       const user: AuthUser = {
@@ -106,7 +107,7 @@ class SecureAuthService {
         permissions: this.getRolePermissions(userProfile.role),
       }
 
-      console.log('🔍 [LOGIN DEBUG] Final user object being stored:', user)
+      log.debug('Final user object being stored', user)
 
       // Create secure tokens
       const accessToken = this.generateSecureToken({
@@ -178,7 +179,7 @@ class SecureAuthService {
       // Clear local storage (no Supabase auth to sign out from)
       this.clearAuthData()
     } catch (error) {
-      console.warn('Logout error:', error)
+      log.warn('Logout error', error)
     }
   }
 
@@ -232,7 +233,7 @@ class SecureAuthService {
         const decoded = JSON.parse(atob(storedAuth))
         authData = decoded.state
       } catch (decodeError) {
-        console.error('Failed to decode auth storage:', decodeError)
+        log.error('Failed to decode auth storage', decodeError)
         return { isValid: false, needsRefresh: false }
       }
       if (!authData.user || !authData.tokens) {
@@ -245,102 +246,30 @@ class SecureAuthService {
         return { isValid: false, needsRefresh: true }
       }
 
-      // Enhanced validation with multiple fallback strategies
-      console.log('🔍 [VALIDATION DEBUG] Validating session for user:', authData.user.username)
-      console.log('🔍 [VALIDATION DEBUG] Stored user ID:', authData.user.id)
-      console.log('🔍 [VALIDATION DEBUG] ID type:', typeof authData.user.id)
+      // Simple, direct validation using the users table
+      log.debug('Validating session for user', { username: authData.user.username })
 
-      // Strategy 1: Try direct ID lookup
-      let userProfile = null
-      let validationError = null
+      // Query users table directly (RLS policy allows read access)
+      // Explicitly select fields to exclude password_hash for security
+      const { data: userProfile, error } = await supabase
+        .from('users')
+        .select('id, username, phone, role, full_name, is_approved')
+        .eq('id', authData.user.id)
+        .maybeSingle()
 
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', authData.user.id)
-          .maybeSingle() // Use maybeSingle() instead of single() to handle zero or one results
-
-        console.log('🔍 [VALIDATION DEBUG] Direct ID lookup result:', { data, error })
-
-        if (data && !error) {
-          userProfile = data
-        } else {
-          validationError = error
-        }
-      } catch (error) {
-        console.warn('🔍 [VALIDATION DEBUG] Direct ID lookup failed:', error)
-        validationError = error
-      }
-
-      // Strategy 2: If direct ID lookup fails, try username lookup as fallback
-      if (!userProfile && authData.user.username) {
-        console.log('🔍 [VALIDATION DEBUG] Trying username fallback for:', authData.user.username)
-
-        try {
-          const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('username', authData.user.username)
-            .maybeSingle() // Use maybeSingle() instead of single() to handle zero or one results
-
-          console.log('🔍 [VALIDATION DEBUG] Username lookup result:', { data, error })
-
-          if (data && !error) {
-            userProfile = data
-            console.log('✅ [VALIDATION DEBUG] Successfully found user via username fallback')
-
-            // Update stored user ID to match database ID for future validations
-            if (data.id !== authData.user.id) {
-              console.log('🔧 [VALIDATION DEBUG] Correcting stored user ID from', authData.user.id, 'to', data.id)
-              // This will be handled in the return statement
-            }
-          } else if (error) {
-            console.warn('🔍 [VALIDATION DEBUG] Username fallback error:', error)
-          } else {
-            console.warn('🔍 [VALIDATION DEBUG] Username fallback found no user')
-          }
-        } catch (error) {
-          console.warn('🔍 [VALIDATION DEBUG] Username fallback exception:', error)
-        }
-      }
-
-      // Strategy 3: Handle complete validation failure
-      if (!userProfile) {
-        const errorCode = validationError?.code
-        const errorMessage = validationError?.message?.toLowerCase() || ''
-
-        console.log('🔍 [VALIDATION DEBUG] All validation strategies failed')
-        console.log('🔍 [VALIDATION DEBUG] Final error code:', errorCode)
-        console.log('🔍 [VALIDATION DEBUG] Final error message:', errorMessage)
-
-        // Distinguish between authentication failures and temporary API issues
-        if (
-          errorCode === 'PGRST116' || // User not found (actual auth failure)
-          errorMessage.includes('no rows returned') ||
-          errorMessage.includes('not found')
-        ) {
-          console.warn('🚨 [VALIDATION DEBUG] User genuinely not found - clearing auth')
-          return { isValid: false, needsRefresh: false }
-        }
-
-        // For other errors (network issues, API problems), preserve session
-        console.warn('⚠️ [VALIDATION DEBUG] Temporary validation failure - preserving session')
-        const user: AuthUser = {
-          id: authData.user.id,
-          username: authData.user.username,
-          role: authData.user.role,
-          permissions: authData.user.permissions || this.getRolePermissions(authData.user.role),
-        }
-
-        return { isValid: true, user, needsRefresh: false }
-      }
-
-      // Check if user exists and is approved
-      if (!userProfile.is_approved) {
-        console.warn('🚨 User account not approved')
+      // Handle user not found
+      if (error || !userProfile) {
+        log.warn('User not found in database')
         return { isValid: false, needsRefresh: false }
       }
+
+      // Check approval status
+      if (userProfile.is_approved === false) {
+        log.warn('User account not approved')
+        return { isValid: false, needsRefresh: false }
+      }
+
+      log.info('Session valid for user', { username: userProfile.username })
 
       // Create validated user object with correct ID
       const user: AuthUser = {
@@ -350,15 +279,15 @@ class SecureAuthService {
         permissions: this.getRolePermissions(userProfile.role),
       }
 
-      console.log('✅ [VALIDATION DEBUG] Session validation successful')
-      console.log('✅ [VALIDATION DEBUG] Validated user:', user)
+      log.success('Session validation successful')
+      log.debug('Validated user', user)
 
       // If the stored ID was different from database ID, the state will be updated automatically
       // by the store when it receives this validated user object
       return { isValid: true, user, needsRefresh: false }
     } catch (error) {
       // Network errors, timeouts, etc. - don't clear auth data
-      console.warn('⚠️ Session validation failed with network/timeout error (keeping auth data):', error)
+      log.warn('Session validation failed with network/timeout error (keeping auth data)', error)
 
       // Try to preserve existing auth state on network errors
       const storedAuth = localStorage.getItem('secure-auth-storage')
@@ -376,7 +305,7 @@ class SecureAuthService {
             return { isValid: true, user, needsRefresh: false }
           }
         } catch (preserveError) {
-          console.error('Failed to preserve auth state:', preserveError)
+          log.error('Failed to preserve auth state', preserveError)
         }
       }
 

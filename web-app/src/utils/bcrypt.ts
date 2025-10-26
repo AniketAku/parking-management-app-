@@ -3,6 +3,7 @@
 
 // Import bcryptjs for password verification
 import bcrypt from 'bcryptjs'
+import { log } from './secureLogger'
 
 /**
  * Verify a plaintext password against various hash formats
@@ -14,11 +15,11 @@ import bcrypt from 'bcryptjs'
 export async function verifyPassword(plaintext: string, hash: string): Promise<boolean> {
   try {
     if (!plaintext || !hash) {
-      console.error('❌ Missing plaintext password or hash')
+      log.error('Missing plaintext password or hash')
       return false
     }
 
-    console.log('🔍 Password verification details:', {
+    log.debug('Password verification details', {
       plaintextLength: plaintext.length,
       hashLength: hash.length,
       hashType: detectHashType(hash)
@@ -29,9 +30,9 @@ export async function verifyPassword(plaintext: string, hash: string): Promise<b
     
     if (isBcryptHash) {
       // Use bcrypt to compare
-      console.log('🔍 Using bcrypt comparison')
+      log.debug('Using bcrypt comparison')
       const isValid = await bcrypt.compare(plaintext, hash)
-      console.log(`🔍 bcrypt.compare result: ${isValid}`)
+      log.debug('bcrypt.compare result', { isValid })
       return isValid
     }
 
@@ -39,23 +40,25 @@ export async function verifyPassword(plaintext: string, hash: string): Promise<b
     const isSHA256Hash = /^[a-f0-9]{64}$/i.test(hash)
     
     if (isSHA256Hash) {
-      console.log('🔍 Detected SHA-256 hash, computing SHA-256 of input')
+      log.debug('Detected SHA-256 hash, computing SHA-256 of input')
       const sha256Hash = await computeSHA256(plaintext)
-      console.log(`🔍 Computed SHA-256: ${sha256Hash}`)
-      console.log(`🔍 Stored hash:     ${hash}`)
+      log.debug('SHA-256 comparison', {
+        computed: sha256Hash,
+        stored: hash
+      })
       const isValid = sha256Hash.toLowerCase() === hash.toLowerCase()
-      console.log(`🔍 SHA-256 comparison result: ${isValid}`)
+      log.debug('SHA-256 comparison result', { isValid })
       return isValid
     }
 
     // If not a recognized hash format, do simple comparison
-    console.log('🔍 Unknown hash format, doing simple string comparison')
+    log.debug('Unknown hash format, doing simple string comparison')
     const isValid = plaintext.trim() === hash.trim()
-    console.log(`🔍 Simple comparison result: ${isValid}`)
+    log.debug('Simple comparison result', { isValid })
     return isValid
-    
+
   } catch (error) {
-    console.error('❌ Password verification error:', error)
+    log.error('Password verification error', error)
     return false
   }
 }
@@ -91,7 +94,7 @@ export async function hashPassword(plaintext: string, rounds: number = 12): Prom
   try {
     return await bcrypt.hash(plaintext, rounds)
   } catch (error) {
-    console.error('❌ Password hashing error:', error)
+    log.error('Password hashing error', error)
     throw new Error('Failed to hash password')
   }
 }

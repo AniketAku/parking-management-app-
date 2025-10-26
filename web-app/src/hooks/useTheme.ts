@@ -2,6 +2,7 @@
 // Manages user theme preferences including high contrast and reduced motion
 
 import { useState, useEffect, useCallback } from 'react'
+import { log } from '../utils/secureLogger'
 
 export type Theme = 'light' | 'dark' | 'high-contrast'
 export type MotionPreference = 'auto' | 'reduce' | 'no-preference'
@@ -77,7 +78,7 @@ export const useTheme = () => {
         setPreferences({ ...DEFAULT_PREFERENCES, ...parsed })
       }
     } catch (error) {
-      console.warn('Failed to load accessibility preferences:', error)
+      log.warn('Failed to load accessibility preferences', error)
     }
   }, [])
 
@@ -86,7 +87,7 @@ export const useTheme = () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences))
     } catch (error) {
-      console.warn('Failed to save accessibility preferences:', error)
+      log.warn('Failed to save accessibility preferences', error)
     }
   }, [preferences])
 

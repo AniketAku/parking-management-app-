@@ -6,6 +6,7 @@
 import { supabase } from '../lib/supabase'
 import { settingsService } from './settingsService'
 import type { SettingsMigration, MigrationStatus } from '../types/settings'
+import { log } from '../utils/secureLogger'
 
 // Migration registry
 const migrations: SettingsMigration[] = [
@@ -211,12 +212,12 @@ class SettingsMigrationService {
     
     for (const migration of sortedMigrations) {
       if (appliedIds.has(migration.id)) {
-        console.log(`Migration ${migration.id} already applied, skipping`)
+        log.info('Migration already applied, skipping', { migrationId: migration.id })
         continue
       }
       
       try {
-        console.log(`Running migration: ${migration.name}`)
+        log.info('Running migration', { migrationId: migration.id, name: migration.name })
         await migration.up()
         
         // Record successful migration
@@ -228,9 +229,9 @@ class SettingsMigrationService {
           success: true
         })
         
-        console.log(`Migration ${migration.id} completed successfully`)
+        log.success('Migration completed successfully', { migrationId: migration.id })
       } catch (error) {
-        console.error(`Migration ${migration.id} failed:`, error)
+        log.error('Migration failed', { migrationId: migration.id, error })
         
         // Record failed migration
         await this.recordMigration(migration.id, false, error instanceof Error ? error.message : 'Unknown error')
@@ -260,7 +261,7 @@ class SettingsMigrationService {
     }
     
     try {
-      console.log(`Rolling back migration: ${migration.name}`)
+      log.info('Rolling back migration', { migrationId, name: migration.name })
       await migration.down()
       
       // Remove migration record
@@ -269,10 +270,10 @@ class SettingsMigrationService {
         .delete()
         .eq('migration_id', migrationId)
       
-      console.log(`Migration ${migrationId} rolled back successfully`)
+      log.success('Migration rolled back successfully', { migrationId })
       return true
     } catch (error) {
-      console.error(`Failed to rollback migration ${migrationId}:`, error)
+      log.error('Failed to rollback migration', { migrationId, error })
       return false
     }
   }
@@ -314,7 +315,7 @@ class SettingsMigrationService {
   async initializeMigrationTable(): Promise<void> {
     const { error } = await supabase.rpc('create_migration_table_if_not_exists')
     if (error) {
-      console.error('Failed to initialize migration table:', error)
+      log.error('Failed to initialize migration table', error)
       throw error
     }
   }
@@ -329,9 +330,9 @@ class SettingsMigrationService {
       try {
         await migration.up()
         await this.recordMigration(migration.id, true)
-        console.log(`Category migration ${migration.id} completed`)
+        log.success('Category migration completed', { migrationId: migration.id })
       } catch (error) {
-        console.error(`Category migration ${migration.id} failed:`, error)
+        log.error('Category migration failed', { migrationId: migration.id, error })
         throw error
       }
     }
@@ -408,7 +409,7 @@ class SettingsMigrationService {
       const backup = await settingsService.exportSettings()
       return JSON.stringify(backup, null, 2)
     } catch (error) {
-      console.error('Failed to create settings backup:', error)
+      log.error('Failed to create settings backup', error)
       throw error
     }
   }
@@ -524,7 +525,7 @@ export const createMigrationStatusTable = async () => {
   })
   
   if (error) {
-    console.error('Failed to create migration status table:', error)
+    log.error('Failed to create migration status table', error)
     throw error
   }
 }
@@ -532,7 +533,7 @@ export const createMigrationStatusTable = async () => {
 // Migration runner utility
 export const runSettingsMigration = async (): Promise<void> => {
   try {
-    console.log('Starting settings migration...')
+    log.info('Starting settings migration')
     
     // Initialize migration table
     await settingsMigrationService.initializeMigrationTable()
@@ -544,9 +545,9 @@ export const runSettingsMigration = async (): Promise<void> => {
     }
     
     // Create backup
-    console.log('Creating settings backup...')
+    log.info('Creating settings backup')
     const backup = await settingsMigrationService.createBackup()
-    console.log('Backup created successfully')
+    log.success('Backup created successfully')
     
     // Run migrations
     const results = await settingsMigrationService.runMigrations()
@@ -554,21 +555,21 @@ export const runSettingsMigration = async (): Promise<void> => {
     const successful = results.filter(r => r.success).length
     const failed = results.filter(r => !r.success).length
     
-    console.log(`Migration completed: ${successful} successful, ${failed} failed`)
+    log.info('Migration completed', { successful, failed })
     
     if (failed > 0) {
-      console.error('Some migrations failed. Check logs for details.')
+      log.error('Some migrations failed. Check logs for details.')
       const failedMigrations = results.filter(r => !r.success)
       failedMigrations.forEach(result => {
-        console.error(`Failed migration ${result.migration_id}: ${result.error_message}`)
+        log.error('Failed migration', { migrationId: result.migration_id, errorMessage: result.error_message })
       })
     }
     
     const status = await settingsMigrationService.getMigrationStatus()
-    console.log(`Migration status: ${status.applied.length}/${status.total} applied`)
+    log.info('Migration status', { applied: status.applied.length, total: status.total })
     
   } catch (error) {
-    console.error('Settings migration failed:', error)
+    log.error('Settings migration failed', error)
     throw error
   }
 }

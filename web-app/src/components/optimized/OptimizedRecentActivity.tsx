@@ -7,6 +7,7 @@ import React, { useMemo, useCallback, memo } from 'react'
 import { Card, CardHeader, CardContent } from '../ui'
 import { formatDateTime, getVehicleTypeColor, getRevenueAmount, formatCurrency } from '../../utils/helpers'
 import { useRenderPerformance } from '../../hooks/usePerformance'
+import { log } from '../../utils/secureLogger'
 import type { ParkingEntry } from '../../types'
 
 interface OptimizedRecentActivityProps {
@@ -191,7 +192,7 @@ export const OptimizedRecentActivity: React.FC<OptimizedRecentActivityProps> = m
   // Memoized view all handler (stable reference)
   const handleViewAll = useCallback(() => {
     // Placeholder for view all functionality
-    console.log('View all activities')
+    log.debug('View all activities clicked')
   }, [])
 
   if (loading) {

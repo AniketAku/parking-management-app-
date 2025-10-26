@@ -5,6 +5,7 @@ import { useSecureAuthStore } from '../../stores/secureAuthStore'
 import { securityService, type RateLimitResult } from '../../services/securityService'
 import type { LoginCredentials } from '../../types'
 import { toast } from 'react-hot-toast'
+import { log } from '../../utils/secureLogger'
 
 interface LoginFormData {
   username: string
@@ -121,8 +122,8 @@ export function SecureLoginForm({ onSwitchToRegister }: SecureLoginFormProps = {
       }, 'low')
 
     } catch (error) {
-      console.error('Login error:', error)
-      
+      log.error('Login error', error)
+
       const errorMessage = error instanceof Error ? error.message : 'Login failed'
       
       // Update rate limiting info

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Card, CardHeader, CardContent } from '../ui'
+import { log } from '../../utils/secureLogger'
 
 interface ShiftEndReconciliationProps {
   shiftId: string
@@ -120,7 +121,7 @@ export const ShiftEndReconciliation: React.FC<ShiftEndReconciliationProps> = ({
         }
 
       } catch (err) {
-        console.error('Failed to fetch revenue data:', err)
+        log.error('Failed to fetch revenue data', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch revenue data')
       } finally {
         setLoading(false)

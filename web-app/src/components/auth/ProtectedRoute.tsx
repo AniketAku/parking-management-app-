@@ -98,26 +98,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   return <>{children}</>
 }
 
-// Higher-order component for protecting routes with specific requirements
-export const withAuth = (
-  Component: React.ComponentType,
-  options?: {
-    requiredPermission?: string
-    requiredRole?: 'admin' | 'user'
-    fallback?: React.ReactNode
-  }
-) => {
-  const ProtectedComponent = (props: any) => (
-    <ProtectedRoute {...options}>
-      <Component {...props} />
-    </ProtectedRoute>
-  )
-  
-  ProtectedComponent.displayName = `withAuth(${Component.displayName || Component.name})`
-  
-  return ProtectedComponent
-}
-
 // Specific route protection components for common use cases
 export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ProtectedRoute requiredRole="admin">

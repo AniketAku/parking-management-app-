@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { BackwardCompatibility, SettingsMigration } from '../utils/settingsMigration'
 // import { getVehicleRatesFromSettings, getValidationRulesFromSettings } from '../utils/helpers'
 import { useSettings } from './useSettings'
+import { log } from '../utils/secureLogger'
 import type { VehicleRates } from '../types'
 
 // Fallback values for individual settings
@@ -124,18 +125,18 @@ export const useCentralizedSettings = (autoLoad = true) => {
       // Test connectivity first
       const isHealthy = await BackwardCompatibility.testConnectivity()
       if (!isHealthy) {
-        setState(prev => ({ 
-          ...prev, 
+        setState(prev => ({
+          ...prev,
           healthStatus: 'degraded',
-          fallbackMode: true 
+          fallbackMode: true
         }))
-        console.warn('⚠️ Settings connectivity degraded, enabling fallback mode')
+        log.warn('Settings connectivity degraded, enabling fallback mode')
       }
 
       // Check if migration is needed first
       const migrationNeeded = await SettingsMigration.isMigrationNeeded()
       if (migrationNeeded) {
-        console.log('🔄 Settings migration needed, running migration...')
+        log.info('Settings migration needed, running migration')
         await SettingsMigration.migrateLegacySettings()
         await refreshSettings() // Refresh the settings after migration
       }
@@ -181,7 +182,7 @@ export const useCentralizedSettings = (autoLoad = true) => {
           settingsData[settingKey] = result.value
         } else {
           failedSettings.push(settingKey)
-          console.warn(`⚠️ Failed to load setting: ${settingKey}`, result.reason)
+          log.warn('Failed to load setting', { setting: settingKey, reason: result.reason })
           // Use fallback values for failed settings
           settingsData[settingKey] = getSettingFallback(settingKey)
         }
@@ -243,14 +244,18 @@ export const useCentralizedSettings = (autoLoad = true) => {
       })
 
       // Log loading results
-      const logMessage = failedSettings.length === 0 
-        ? '✅ Centralized settings loaded successfully'
-        : `⚠️ Centralized settings loaded with ${failedSettings.length} failures: ${failedSettings.join(', ')}`
-      console.log(logMessage)
+      if (failedSettings.length === 0) {
+        log.success('Centralized settings loaded successfully')
+      } else {
+        log.warn('Centralized settings loaded with failures', {
+          failureCount: failedSettings.length,
+          failedSettings: failedSettings.join(', ')
+        })
+      }
 
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error loading settings'
-      console.error('❌ Failed to load centralized settings:', error)
+      log.error('Failed to load centralized settings', error)
       setState(prev => ({
         ...prev,
         loading: false,
@@ -276,9 +281,9 @@ export const useCentralizedSettings = (autoLoad = true) => {
       const settingsModified = settings.some(s => 
         new Date(s.updated_at || s.created_at) > state.lastUpdated!
       )
-      
+
       if (settingsModified) {
-        console.log('🔄 Settings changed, reloading centralized settings...')
+        log.info('Settings changed, reloading centralized settings')
         loadSettings(true)
       }
     }
@@ -443,7 +448,7 @@ export const useBusinessConfig = () => {
   // Refresh function
   const refresh = async () => {
     // This will be handled by the useSettings refresh
-    console.log('🔄 Refreshing business configuration...')
+    log.info('Refreshing business configuration')
   }
   
   return {

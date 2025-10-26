@@ -6,6 +6,7 @@
 
 import { supabase } from '../lib/supabase'
 import { settingsService } from './settingsService'
+import { log } from '../utils/secureLogger'
 import type {
   SettingsChangeEvent,
   SettingsSubscriptionCallback,
@@ -16,7 +17,8 @@ import type {
   SettingsConflictResolution,
   SettingsRealtimeStatus,
   SettingsSyncEvent,
-  SettingsBroadcastMessage
+  SettingsBroadcastMessage,
+  SettingValue
 } from '../types/settings'
 
 export interface RealtimeSyncOptions {
@@ -34,12 +36,29 @@ export interface RealtimeSyncOptions {
 export interface SyncQueueItem {
   id: string
   key: string
-  value: any
+  value: SettingValue
   timestamp: number
   clientId: string
   operation: 'set' | 'delete' | 'reset'
   retries: number
   maxRetries: number
+}
+
+// Supabase realtime payload types
+interface PostgresChangesPayload {
+  schema: string
+  table: string
+  commit_timestamp: string
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE'
+  new: Record<string, unknown>
+  old: Record<string, unknown>
+  errors: string[] | null
+}
+
+interface PresencePayload {
+  key: string
+  newPresences?: Array<Record<string, unknown>>
+  leftPresences?: Array<Record<string, unknown>>
 }
 
 /**
@@ -50,7 +69,7 @@ export class SettingsRealtimeSync {
   private static instance: SettingsRealtimeSync | null = null
   
   // Connection management
-  private channel: any = null
+  private channel: ReturnType<typeof supabase.channel> | null = null
   private isConnected = false
   private reconnectTimeout: NodeJS.Timeout | null = null
   private heartbeatInterval: NodeJS.Timeout | null = null
@@ -138,33 +157,33 @@ export class SettingsRealtimeSync {
           event: '*',
           schema: 'public',
           table: 'app_settings'
-        }, (payload: any) => {
+        }, (payload: PostgresChangesPayload) => {
           this.handleDatabaseChange('app_settings', payload)
         })
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
           table: 'user_settings'
-        }, (payload: any) => {
+        }, (payload: PostgresChangesPayload) => {
           this.handleDatabaseChange('user_settings', payload)
         })
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
           table: 'location_settings'
-        }, (payload: any) => {
+        }, (payload: PostgresChangesPayload) => {
           this.handleDatabaseChange('location_settings', payload)
         })
 
       // Subscribe to broadcast messages for client-to-client communication
       this.channel
-        .on('broadcast', { event: 'setting_change' }, (payload: any) => {
+        .on('broadcast', { event: 'setting_change' }, (payload: SettingsBroadcastMessage) => {
           this.handleBroadcastMessage(payload)
         })
-        .on('broadcast', { event: 'bulk_update' }, (payload: any) => {
+        .on('broadcast', { event: 'bulk_update' }, (payload: SettingsBroadcastMessage) => {
           this.handleBulkUpdateBroadcast(payload)
         })
-        .on('broadcast', { event: 'sync_request' }, (payload: any) => {
+        .on('broadcast', { event: 'sync_request' }, (payload: SettingsBroadcastMessage) => {
           this.handleSyncRequest(payload)
         })
 
@@ -173,11 +192,11 @@ export class SettingsRealtimeSync {
         .on('presence', { event: 'sync' }, () => {
           this.handlePresenceSync()
         })
-        .on('presence', { event: 'join' }, ({ key, newPresences }: any) => {
-          this.handleClientJoin(key, newPresences)
+        .on('presence', { event: 'join' }, (payload: PresencePayload) => {
+          this.handleClientJoin(payload.key, payload.newPresences || [])
         })
-        .on('presence', { event: 'leave' }, ({ key, leftPresences }: any) => {
-          this.handleClientLeave(key, leftPresences)
+        .on('presence', { event: 'leave' }, (payload: PresencePayload) => {
+          this.handleClientLeave(payload.key, payload.leftPresences || [])
         })
 
       // Subscribe and track presence
@@ -289,7 +308,7 @@ export class SettingsRealtimeSync {
   /**
    * Broadcast a setting change to other clients
    */
-  async broadcastChange(key: string, value: any, metadata?: Record<string, any>): Promise<void> {
+  async broadcastChange(key: string, value: SettingValue, metadata?: Record<string, SettingValue>): Promise<void> {
     if (!this.isConnected || !this.channel) {
       this.log('Cannot broadcast - not connected')
       return
@@ -383,11 +402,11 @@ export class SettingsRealtimeSync {
    */
   private async resolveConflict(
     key: string,
-    localValue: any,
-    remoteValue: any,
+    localValue: SettingValue,
+    remoteValue: SettingValue,
     localTimestamp: number,
     remoteTimestamp: number
-  ): Promise<{ resolvedValue: any; resolution: string }> {
+  ): Promise<{ resolvedValue: SettingValue; resolution: string }> {
     this.log('Resolving conflict for setting:', {
       key,
       strategy: this.conflictResolutionStrategy,
@@ -514,7 +533,7 @@ export class SettingsRealtimeSync {
 
   // Event Handlers
 
-  private handleDatabaseChange(table: string, payload: any): void {
+  private handleDatabaseChange(table: string, payload: PostgresChangesPayload): void {
     this.log('Database change detected:', table, payload.eventType)
 
     const event: SettingsChangeEvent = {
@@ -534,7 +553,7 @@ export class SettingsRealtimeSync {
     this.emitChangeEvent(event)
   }
 
-  private async handleBroadcastMessage(payload: any): Promise<void> {
+  private async handleBroadcastMessage(payload: SettingsBroadcastMessage): Promise<void> {
     const message = payload.payload as SettingsBroadcastMessage
 
     // Ignore our own broadcasts unless configured otherwise
@@ -579,13 +598,13 @@ export class SettingsRealtimeSync {
     }
   }
 
-  private handleBulkUpdateBroadcast(payload: any): void {
+  private handleBulkUpdateBroadcast(payload: SettingsBroadcastMessage): void {
     // Handle bulk updates from other clients
     this.log('Received bulk update broadcast:', payload)
     // Implementation would handle bulk sync operations
   }
 
-  private handleSyncRequest(payload: any): void {
+  private handleSyncRequest(payload: SettingsBroadcastMessage): void {
     // Handle sync requests from other clients
     this.log('Received sync request:', payload)
     // Implementation would respond with current state
@@ -596,11 +615,11 @@ export class SettingsRealtimeSync {
     this.log('Presence sync - active clients:', Object.keys(presences).length)
   }
 
-  private handleClientJoin(key: string, newPresences: any[]): void {
+  private handleClientJoin(key: string, newPresences: Array<Record<string, unknown>>): void {
     this.log('Client joined:', key, newPresences.length)
   }
 
-  private handleClientLeave(key: string, leftPresences: any[]): void {
+  private handleClientLeave(key: string, leftPresences: Array<Record<string, unknown>>): void {
     this.log('Client left:', key, leftPresences.length)
   }
 
@@ -699,7 +718,7 @@ export class SettingsRealtimeSync {
 
   private log(...args: any[]): void {
     if (this.options.enableDebugLogging) {
-      console.log('[SettingsRealtimeSync]', ...args)
+      log.debug('[SettingsRealtimeSync]', ...args)
     }
   }
 

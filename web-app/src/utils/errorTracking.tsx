@@ -2,6 +2,7 @@
 // Comprehensive error handling and performance issue tracking
 
 import React, { useEffect } from 'react'
+import { log } from './secureLogger'
 
 export interface ErrorReport {
   id: string
@@ -86,7 +87,7 @@ class ErrorTracker {
     this.setupAccessibilityErrorTracking()
 
     this.isInitialized = true
-    console.log('🔍 Error tracking initialized')
+    log.info('Error tracking initialized')
   }
 
   /**
@@ -357,23 +358,29 @@ class ErrorTracker {
       try {
         localStorage.setItem('error-tracker-errors', JSON.stringify(this.errors))
       } catch (e) {
-        console.warn('Failed to store errors in localStorage:', e)
+        log.warn('Failed to store errors in localStorage', e)
       }
     }
 
     // Send to remote endpoint if configured
     if (this.config.enableRemoteLogging && this.config.remoteEndpoint) {
-      this.sendErrorToRemote(error).catch(console.error)
+      this.sendErrorToRemote(error).catch(err => log.error('Failed to send error to remote', err))
     }
 
     // Console logging for development
     if (process.env.NODE_ENV === 'development') {
-      console.group(`🐛 ${error.type} ${error.level}: ${error.message}`)
-      console.log('Error details:', error)
+      const errorData: any = {
+        type: error.type,
+        level: error.level,
+        message: error.message,
+        errorDetails: error
+      };
+
       if (error.stack) {
-        console.log('Stack trace:', error.stack)
+        errorData.stackTrace = error.stack;
       }
-      console.groupEnd()
+
+      log.debug('Error tracked', errorData);
     }
   }
 
@@ -389,7 +396,7 @@ class ErrorTracker {
         this.errors = JSON.parse(stored)
       }
     } catch (error) {
-      console.warn('Failed to load stored errors:', error)
+      log.warn('Failed to load stored errors', error)
     }
   }
 
@@ -408,7 +415,7 @@ class ErrorTracker {
         body: JSON.stringify(error),
       })
     } catch (err) {
-      console.warn('Failed to send error to remote endpoint:', err)
+      log.warn('Failed to send error to remote endpoint', err)
     }
   }
 

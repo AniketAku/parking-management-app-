@@ -2,9 +2,10 @@ import axios from 'axios'
 import type { AxiosInstance, AxiosResponse, AxiosError } from 'axios'
 import { toast } from 'react-hot-toast'
 import { securityService } from './securityService'
-import type { 
-  ParkingEntry, 
-  ParkingStatistics, 
+import { log } from '../utils/secureLogger'
+import type {
+  ParkingEntry,
+  ParkingStatistics,
   SearchFilters,
   AuthUser,
   LoginCredentials,
@@ -110,8 +111,8 @@ class ApiService {
             // Exponential backoff
             const delay = API_CONFIG.retryDelay * Math.pow(2, attempts)
             await this.delay(delay)
-            
-            console.log(`🔄 Retrying API request to ${url} (attempt ${attempts + 1}/${API_CONFIG.retries})`)
+
+            log.info('Retrying API request', { url, attempt: attempts + 1, maxRetries: API_CONFIG.retries })
             return this.client.request(originalRequest)
           }
         }
@@ -153,24 +154,24 @@ class ApiService {
       // Server responded with error status
       const data = error.response.data as any
       const message = data?.message || `Server error: ${error.response.status}`
-      
-      console.error('API Error:', {
+
+      log.error('API Error', {
         status: error.response.status,
         message,
         url: error.config?.url
       })
-      
+
       // Don't show toast for 401 errors (handled separately)
       if (error.response.status !== 401) {
         toast.error(message)
       }
     } else if (error.request) {
       // Network error
-      console.error('Network Error:', error.message)
+      log.error('Network Error', { message: error.message })
       toast.error('Network error. Please check your connection.')
     } else {
       // Other error
-      console.error('Request Error:', error.message)
+      log.error('Request Error', { message: error.message })
       toast.error('Request failed. Please try again.')
     }
   }
@@ -199,7 +200,7 @@ class ApiService {
     try {
       await this.client.post('/auth/logout')
     } catch (error) {
-      console.warn('Logout API call failed:', error)
+      log.warn('Logout API call failed', error)
       // Continue with local logout even if API call fails
     }
   }
@@ -267,7 +268,7 @@ class ApiService {
       await this.client.delete(`/entries/${id}`)
     } catch (error) {
       if (axios.isAxiosError(error) && !error.response) {
-        console.log('🧪 Mock: Entry deleted')
+        log.debug('Mock: Entry deleted')
         return
       }
       throw error

@@ -5,17 +5,18 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { validateAllSettings, validateBusinessSettings } from '../services/settingsValidationService'
-import { 
-  exportSettings, 
-  importSettings, 
-  createBackup, 
-  restoreBackup 
+import {
+  exportSettings,
+  importSettings,
+  createBackup,
+  restoreBackup
 } from '../services/settingsImportExportService'
 import { smartConfigurationService } from '../services/smartConfigurationService'
-import type { 
-  AllSettings, 
-  SettingCategory, 
-  ValidationResult, 
+import { log } from '../utils/secureLogger'
+import type {
+  AllSettings,
+  SettingCategory,
+  ValidationResult,
   SettingsExportData,
   SettingsImportOptions
 } from '../types/settings'
@@ -253,10 +254,10 @@ export function useAdvancedSettings(
         validation: result,
         lastValidated: new Date()
       }))
-      
+
       return result
     } catch (error) {
-      console.error('Validation failed:', error)
+      log.error('Validation failed', error)
       return { isValid: false, issues: [] }
     }
   }, [state.settings, category])
@@ -269,10 +270,10 @@ export function useAdvancedSettings(
       const result = category
         ? await validateCategorySettings(category, settingsToValidate[category])
         : await validateAllSettings(settingsToValidate)
-      
+
       return result
     } catch (error) {
-      console.error('Settings validation failed:', error)
+      log.error('Settings validation failed', error)
       return { isValid: false, issues: [] }
     }
   }, [state.settings, category])
@@ -398,7 +399,7 @@ export function useAdvancedSettings(
       setRecommendations(recs)
       return recs
     } catch (error) {
-      console.error('Failed to get recommendations:', error)
+      log.error('Failed to get recommendations', error)
       return []
     }
   }, [state.settings])
@@ -439,7 +440,7 @@ export function useAdvancedSettings(
       setSearchResults(results)
       return results
     } catch (error) {
-      console.error('Search failed:', error)
+      log.error('Search failed', error)
       return []
     }
   }, [state.settings])
@@ -480,12 +481,12 @@ export function useAdvancedSettings(
   // Real-time sync setup
   const setupRealTimeSync = useCallback(() => {
     // Implementation would set up WebSocket or polling for real-time updates
-    console.log('Setting up real-time sync')
+    log.debug('Setting up real-time sync')
   }, [])
 
   const cleanupRealTimeSync = useCallback(() => {
     // Cleanup real-time sync connections
-    console.log('Cleaning up real-time sync')
+    log.debug('Cleaning up real-time sync')
   }, [])
 
   // Computed values

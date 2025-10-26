@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useSecureAuthStore } from '../stores/secureAuthStore'
+import { log } from '../utils/secureLogger'
 
 interface PasswordChangeDialogProps {
   isOpen: boolean
@@ -63,7 +64,7 @@ export default function PasswordChangeDialog({ isOpen, onClose }: PasswordChange
       
     } catch (error) {
       // Error is handled by the store and displayed via storeError
-      console.log('Password change failed:', error)
+      log.debug('Password change failed', error)
     } finally {
       setIsSubmitting(false)
     }

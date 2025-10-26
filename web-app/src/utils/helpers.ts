@@ -1,5 +1,6 @@
 import type { ParkingEntry, VehicleRates } from '../types'
 import { BackwardCompatibility } from './settingsMigration'
+import { log } from './secureLogger'
 
 // DEPRECATED: Vehicle rates should come from centralized settings, these are fallbacks only
 // 🚨 WARNING: These hard-coded values will be removed in future versions
@@ -173,7 +174,7 @@ export const getVehicleRate = (vehicleType: string, customRates?: VehicleRates):
  * Calculate parking fee based on vehicle type and entry time - LEGACY VERSION
  */
 export const calculateParkingFee = (vehicleType: string, entryTime: string, exitTime?: string, customRates?: VehicleRates): number => {
-  console.warn('⚠️ DEPRECATED: calculateParkingFee() from helpers.ts is deprecated. Use UnifiedFeeCalculationService.calculateParkingFee() instead')
+  log.warn('DEPRECATED: calculateParkingFee() is deprecated, use UnifiedFeeCalculationService.calculateParkingFee() instead')
 
   const entry = new Date(entryTime)
   const exit = exitTime ? new Date(exitTime) : new Date()
@@ -186,7 +187,7 @@ export const calculateParkingFee = (vehicleType: string, entryTime: string, exit
   const totalFee = days * rate
 
   // Debug logging for fee calculation
-  console.log('🧮 LEGACY Fee Calculation Debug:', {
+  log.debug('LEGACY fee calculation', {
     vehicleType,
     entryTime,
     exitTime: exitTime || 'current time',
@@ -208,7 +209,7 @@ export const calculateParkingFee = (vehicleType: string, entryTime: string, exit
  * Calculate duration between entry and exit times (string format) - LEGACY VERSION
  */
 export const calculateDuration = (entryTime: string, exitTime?: string): string => {
-  console.warn('⚠️ DEPRECATED: calculateDuration() from helpers.ts is deprecated. Use UnifiedFeeCalculationService.calculateDuration() instead')
+  log.warn('DEPRECATED: calculateDuration() is deprecated, use UnifiedFeeCalculationService.calculateDuration() instead')
 
   const entry = new Date(entryTime)
   const exit = exitTime ? new Date(exitTime) : new Date()

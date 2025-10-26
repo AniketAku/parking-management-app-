@@ -13,11 +13,12 @@ import {
   formatDateTime,
   formatCurrency,
   getVehicleTypeColor,
-  calculateDuration,
   calculateParkingFee,
   getRevenueAmount
 } from '../../utils/helpers'
 import { isCurrentlyParked } from '../../utils/statusHelpers'
+import { UnifiedFeeCalculationService } from '../../services/UnifiedFeeCalculationService'
+import { log } from '../../utils/secureLogger'
 import type { ParkingEntry } from '../../types'
 
 interface OptimizedVehicleTableProps {
@@ -157,14 +158,16 @@ const VirtualizedTableRow = memo<VirtualizedRowProps>(({ index, style, data }) =
   ), [entry.paymentStatus])
 
   const getDuration = useMemo(() => {
+    const feeService = UnifiedFeeCalculationService.getInstance()
+
     if (isCurrentlyParked(entry.status)) {
-      return calculateDuration(entry.entryTime)
+      return feeService.calculateDuration(entry.entryTime)
     }
-    
+
     if (entry.exitTime) {
-      return calculateDuration(entry.entryTime, entry.exitTime)
+      return feeService.calculateDuration(entry.entryTime, entry.exitTime)
     }
-    
+
     return 'N/A'
   }, [entry.status, entry.entryTime, entry.exitTime])
 
@@ -186,7 +189,7 @@ const VirtualizedTableRow = memo<VirtualizedRowProps>(({ index, style, data }) =
         )
         return formatCurrency(calculatedFee)
       } catch (error) {
-        console.warn('Error calculating parking fee:', error)
+        log.warn('Error calculating parking fee', error)
       }
     }
     
@@ -201,7 +204,7 @@ const VirtualizedTableRow = memo<VirtualizedRowProps>(({ index, style, data }) =
         )
         return formatCurrency(currentFee)
       } catch (error) {
-        console.warn('Error calculating current parking fee:', error)
+        log.warn('Error calculating current parking fee', error)
       }
     }
     

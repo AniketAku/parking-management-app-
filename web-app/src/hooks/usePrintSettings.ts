@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { PrinterProfile } from '../types/printerConfig'
 import printService from '../services/printService'
+import { log } from '../utils/secureLogger'
 
 export interface PrintSettings {
   autoPrintEntry: boolean
@@ -59,7 +60,7 @@ export const usePrintSettings = (): UsePrintSettingsReturn => {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load print settings'
       setError(message)
-      console.error('Failed to load print settings:', err)
+      log.error('Failed to load print settings', err)
     } finally {
       setIsLoading(false)
     }
@@ -71,7 +72,7 @@ export const usePrintSettings = (): UsePrintSettingsReturn => {
       const printers = await printService.getAvailablePrinters()
       setAvailablePrinters(printers)
     } catch (err) {
-      console.error('Failed to load printers:', err)
+      log.error('Failed to load printers', err)
     }
   }, [])
 
@@ -91,7 +92,7 @@ export const usePrintSettings = (): UsePrintSettingsReturn => {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update print settings'
       setError(message)
-      console.error('Failed to update print settings:', err)
+      log.error('Failed to update print settings', err)
     }
   }, [printSettings])
 

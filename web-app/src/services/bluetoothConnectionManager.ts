@@ -7,6 +7,7 @@ import type {
 } from '../types/bluetoothPrinter'
 import { BluetoothConstants } from '../types/bluetoothPrinter'
 import { bluetoothPrinterService } from './bluetoothPrinterService'
+import { log } from '../utils/secureLogger'
 
 export interface ConnectionAttempt {
   deviceId: string
@@ -62,8 +63,8 @@ export class BluetoothConnectionManager {
       // Reset attempts on successful connection
       this.connectionAttempts.delete(deviceId)
       this.startKeepAlive(deviceId)
-      
-      console.log(`Successfully reconnected to Bluetooth printer ${deviceId}`)
+
+      log.success('Successfully reconnected to Bluetooth printer', { deviceId })
     } catch (error) {
       attempt.attempts++
       attempt.lastAttempt = now
@@ -76,13 +77,13 @@ export class BluetoothConnectionManager {
       
       attempt.nextRetry = new Date(now.getTime() + delay)
       this.connectionAttempts.set(deviceId, attempt)
-      
-      console.error(`Reconnection attempt ${attempt.attempts}/${this.maxRetryAttempts} failed for ${deviceId}:`, error)
-      
+
+      log.error('Reconnection attempt failed', { deviceId, attempt: attempt.attempts, maxAttempts: this.maxRetryAttempts, error })
+
       if (attempt.attempts < this.maxRetryAttempts) {
         // Schedule next retry
         setTimeout(() => {
-          this.maintainBluetoothConnection(deviceId).catch(console.error)
+          this.maintainBluetoothConnection(deviceId).catch(err => log.error('Scheduled reconnection failed', { deviceId, error: err }))
         }, delay)
       }
       
@@ -91,8 +92,8 @@ export class BluetoothConnectionManager {
   }
 
   async handleBluetoothDisconnection(deviceId: string): Promise<void> {
-    console.log(`Handling disconnection for Bluetooth printer ${deviceId}`)
-    
+    log.info('Handling disconnection for Bluetooth printer', { deviceId })
+
     this.stopKeepAlive(deviceId)
     
     try {
@@ -101,16 +102,16 @@ export class BluetoothConnectionManager {
       
       if (device) {
         const shouldAutoReconnect = this.shouldAutoReconnect(deviceId)
-        
+
         if (shouldAutoReconnect) {
-          console.log(`Attempting auto-reconnect for ${deviceId}`)
+          log.info('Attempting auto-reconnect', { deviceId })
           await this.maintainBluetoothConnection(deviceId)
         } else {
-          console.log(`Auto-reconnect disabled for ${deviceId}`)
+          log.info('Auto-reconnect disabled', { deviceId })
         }
       }
     } catch (error) {
-      console.error(`Failed to handle disconnection for ${deviceId}:`, error)
+      log.error('Failed to handle disconnection', { deviceId, error })
     }
   }
 
@@ -137,7 +138,7 @@ export class BluetoothConnectionManager {
       try {
         await bluetoothPrinterService.checkBluetoothPrinterStatus(deviceId)
       } catch (error) {
-        console.warn(`Keep-alive failed for ${deviceId}:`, error)
+        log.warn('Keep-alive failed', { deviceId, error })
         clearInterval(interval)
         this.handleBluetoothDisconnection(deviceId)
       }
@@ -171,18 +172,18 @@ export class BluetoothConnectionManager {
       for (const device of connectedDevices) {
         try {
           const status = await bluetoothPrinterService.checkBluetoothPrinterStatus(device.id)
-          
+
           if (!status.connected) {
-            console.warn(`Connection lost for device ${device.id}`)
+            log.warn('Connection lost for device', { deviceId: device.id })
             await this.handleBluetoothDisconnection(device.id)
           }
         } catch (error) {
-          console.error(`Monitor check failed for ${device.id}:`, error)
+          log.error('Monitor check failed', { deviceId: device.id, error })
           await this.handleBluetoothDisconnection(device.id)
         }
       }
     } catch (error) {
-      console.error('Connection monitoring failed:', error)
+      log.error('Connection monitoring failed', error)
     }
   }
 
@@ -202,7 +203,7 @@ export class BluetoothConnectionManager {
 
   async resetConnectionAttempts(deviceId: string): void {
     this.connectionAttempts.delete(deviceId)
-    console.log(`Reset connection attempts for ${deviceId}`)
+    log.debug('Reset connection attempts', { deviceId })
   }
 
   getConnectionAttempts(): Map<string, ConnectionAttempt> {
@@ -267,7 +268,7 @@ export class BluetoothConnectionManager {
         try {
           await bluetoothPrinterService.checkBluetoothPrinterStatus(deviceId)
         } catch (error) {
-          console.warn(`Optimized keep-alive failed for ${deviceId}:`, error)
+          log.warn('Optimized keep-alive failed', { deviceId, error })
           this.handleBluetoothDisconnection(deviceId)
         }
       }, optimization.keepAliveInterval)

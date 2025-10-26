@@ -7,6 +7,7 @@
 import { supabase } from '../lib/supabase'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { validateSetting, formatValidationErrors } from '../utils/settingsValidation'
+import { log } from '../utils/secureLogger'
 
 // ================================================
 // TYPE DEFINITIONS
@@ -118,13 +119,13 @@ class NewSettingsService {
         .single()
 
       if (error) {
-        console.error(`Failed to get setting ${cacheKey}:`, error.message)
+        log.error('Failed to get setting', { setting: cacheKey, error: error.message })
         if (options.throwOnError) throw error
         return null
       }
 
       if (!data) {
-        console.warn(`Setting ${cacheKey} not found in database`)
+        log.warn('Setting not found in database', { setting: cacheKey })
         return null
       }
 
@@ -134,7 +135,7 @@ class NewSettingsService {
       
       return value
     } catch (error) {
-      console.error(`Error getting setting ${cacheKey}:`, error)
+      log.error('Error getting setting', { setting: cacheKey, error })
       if (options.throwOnError) throw error
       return null
     }
@@ -155,13 +156,13 @@ class NewSettingsService {
         .order('sort_order')
 
       if (error) {
-        console.error(`Failed to get ${category} settings:`, error.message)
+        log.error('Failed to get category settings', { category, error: error.message })
         if (options.throwOnError) throw error
         return {}
       }
 
       if (!data || data.length === 0) {
-        console.warn(`No settings found for category ${category}`)
+        log.warn('No settings found for category', { category })
         return {}
       }
 
@@ -178,10 +179,10 @@ class NewSettingsService {
         }
       })
 
-      console.log(`✅ Successfully loaded ${data.length} settings for category ${category}`)
+      log.success('Successfully loaded category settings', { category, count: data.length })
       return result as Partial<T>
     } catch (error) {
-      console.error(`Error getting ${category} settings:`, error)
+      log.error('Error getting category settings', { category, error })
       if (options.throwOnError) throw error
       return {}
     }
@@ -202,7 +203,7 @@ class NewSettingsService {
 
       if (!validationResult.isValid) {
         const errorMessage = `Validation failed for ${category}.${key}: ${formatValidationErrors(validationResult.errors)}`
-        console.error(errorMessage)
+        log.error(errorMessage, { category, key, errors: validationResult.errors })
 
         if (options.throwOnError) {
           throw new Error(errorMessage)
@@ -228,7 +229,7 @@ class NewSettingsService {
         .eq('key', key)
 
       if (error) {
-        console.error(`Failed to update setting ${category}.${key}:`, error.message)
+        log.error('Failed to update setting', { category, key, error: error.message })
         if (options.throwOnError) throw error
         return false
       }
@@ -238,10 +239,10 @@ class NewSettingsService {
       this.setCachedValue(cacheKey, finalValue)
       this.notifySubscribers(category, { [key]: finalValue })
 
-      console.log(`✅ Updated setting ${cacheKey} (validated)`)
+      log.success('Updated setting', { setting: cacheKey, validated: true })
       return true
     } catch (error) {
-      console.error(`Error updating setting ${category}.${key}:`, error)
+      log.error('Error updating setting', { category, key, error })
       if (options.throwOnError) throw error
       return false
     }
@@ -288,7 +289,7 @@ class NewSettingsService {
       // If any validation errors, fail the entire operation
       if (allErrors.length > 0) {
         const errorMessage = `Validation failed for ${category} settings:\n${allErrors.join('\n')}`
-        console.error(errorMessage)
+        log.error(errorMessage, { category, errorCount: allErrors.length })
 
         if (options.throwOnError) {
           throw new Error(errorMessage)
@@ -304,7 +305,7 @@ class NewSettingsService {
         })
 
       if (error) {
-        console.error(`Failed to update ${category} settings:`, error.message)
+        log.error('Failed to update category settings', { category, error: error.message })
         if (options.throwOnError) throw error
         return false
       }
@@ -315,10 +316,14 @@ class NewSettingsService {
       })
       this.notifySubscribers(category, validatedSettings)
 
-      console.log(`✅ Updated ${Object.keys(validatedSettings).length} settings in category ${category} (all validated)`)
+      log.success('Updated category settings', {
+        category,
+        count: Object.keys(validatedSettings).length,
+        validated: true
+      })
       return true
     } catch (error) {
-      console.error(`Error updating ${category} settings:`, error)
+      log.error('Error updating category settings', { category, error })
       if (options.throwOnError) throw error
       return false
     }
@@ -400,15 +405,15 @@ class NewSettingsService {
           filter: `category=eq.${category}`
         },
         (payload) => {
-          console.log(`📡 Settings changed in category ${category}:`, payload)
-          
+          log.info('Settings changed in category', { category, event: payload.eventType })
+
           // Invalidate cache for changed setting
           if (payload.new && typeof payload.new === 'object') {
             const { key, value } = payload.new as { key: string; value: any }
             const cacheKey = `${category}.${key}`
             const parsedValue = this.parseJsonValue(value)
             this.setCachedValue(cacheKey, parsedValue)
-            
+
             // Notify subscribers
             this.notifySubscribers(category, { [key]: parsedValue })
           }
@@ -435,7 +440,7 @@ class NewSettingsService {
         try {
           callback(changedSettings)
         } catch (error) {
-          console.error(`Error in settings subscriber for ${category}:`, error)
+          log.error('Error in settings subscriber', { category, error })
         }
       })
     }
@@ -548,7 +553,7 @@ class NewSettingsService {
       // Mock implementation - replace with actual audit table query
       return []
     } catch (error) {
-      console.error('Error getting audit log:', error)
+      log.error('Error getting audit log', error)
       return []
     }
   }
@@ -561,7 +566,7 @@ class NewSettingsService {
       // Mock implementation - replace with actual templates query
       return []
     } catch (error) {
-      console.error('Error getting templates:', error)
+      log.error('Error getting templates', error)
       return []
     }
   }
@@ -584,7 +589,7 @@ class NewSettingsService {
         data: JSON.stringify(exportData, null, 2)
       }
     } catch (error) {
-      console.error('Error exporting settings:', error)
+      log.error('Error exporting settings', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Export failed'
@@ -609,7 +614,7 @@ class NewSettingsService {
 
       return { success: true }
     } catch (error) {
-      console.error('Error importing settings:', error)
+      log.error('Error importing settings', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Import failed'
@@ -623,10 +628,10 @@ class NewSettingsService {
   async resetCategoryToDefaults(category: SettingCategory): Promise<{ success: boolean; error?: string }> {
     try {
       // Mock implementation - would need default values configuration
-      console.warn(`Reset to defaults not implemented for category: ${category}`)
+      log.warn('Reset to defaults not implemented', { category })
       return { success: false, error: 'Reset to defaults not implemented' }
     } catch (error) {
-      console.error('Error resetting category:', error)
+      log.error('Error resetting category', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Reset failed'
@@ -647,7 +652,7 @@ class NewSettingsService {
 
       return { success: true }
     } catch (error) {
-      console.error('Error in bulk edit:', error)
+      log.error('Error in bulk edit', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Bulk edit failed'

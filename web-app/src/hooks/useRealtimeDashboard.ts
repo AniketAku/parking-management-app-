@@ -10,6 +10,7 @@ import {
   type DashboardMetrics,
   type RealtimeDashboardState
 } from '../services/RealtimeDashboardService';
+import { log } from '../utils/secureLogger';
 
 export interface UseRealtimeDashboardOptions {
   autoConnect?: boolean;
@@ -85,7 +86,7 @@ export function useRealtimeDashboard(
         try {
           await realtimeDashboardService.initialize();
         } catch (error) {
-          console.error('Failed to initialize real-time dashboard service:', error);
+          log.error('Failed to initialize real-time dashboard service', error);
         }
       }
 
@@ -130,7 +131,7 @@ export function useRealtimeDashboard(
         try {
           unsubscribe();
         } catch (error) {
-          console.error('Error unsubscribing from real-time updates:', error);
+          log.error('Error unsubscribing from real-time updates', error);
         }
       });
 
@@ -252,7 +253,7 @@ export function useRealtimeDashboard(
     try {
       await realtimeDashboardService.reconnect();
     } catch (error) {
-      console.error('Failed to reconnect real-time dashboard service:', error);
+      log.error('Failed to reconnect real-time dashboard service', error);
       throw error;
     }
   }, []);
@@ -262,7 +263,7 @@ export function useRealtimeDashboard(
     try {
       await realtimeDashboardService.forceRefreshMetrics();
     } catch (error) {
-      console.error('Failed to refresh dashboard metrics:', error);
+      log.error('Failed to refresh dashboard metrics', error);
       throw error;
     }
   }, []);

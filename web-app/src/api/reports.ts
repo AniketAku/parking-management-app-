@@ -6,6 +6,7 @@
 import { supabase } from '../lib/supabase';
 import { ShiftReportService, ShiftReportExportOptions } from '../services/ShiftReportService';
 import { ReportAnalyticsService, AnalyticsTimeRange } from '../services/ReportAnalyticsService';
+import { log } from '../utils/secureLogger';
 
 export interface ReportGenerationRequest {
   shift_id: string;
@@ -136,7 +137,7 @@ export class ReportsAPI {
       };
 
     } catch (error) {
-      console.error('Error generating shift report:', error);
+      log.error('Error generating shift report', error);
       return {
         success: false,
         message: `Report generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -217,7 +218,7 @@ export class ReportsAPI {
       };
 
     } catch (error) {
-      console.error('Error getting report status:', error);
+      log.error('Error getting report status', error);
       return {
         status: 'failed',
         error_message: 'Failed to get report status'
@@ -283,7 +284,7 @@ export class ReportsAPI {
       };
 
     } catch (error) {
-      console.error('Error generating analytics report:', error);
+      log.error('Error generating analytics report', error);
       return {
         success: false,
         message: `Analytics generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -349,7 +350,7 @@ export class ReportsAPI {
       };
 
     } catch (error) {
-      console.error('Error downloading file:', error);
+      log.error('Error downloading file', error);
       throw error;
     }
   }
@@ -414,7 +415,7 @@ export class ReportsAPI {
       };
 
     } catch (error) {
-      console.error('Error listing user reports:', error);
+      log.error('Error listing user reports', error);
       return {
         success: false,
         message: `Failed to list reports: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -452,7 +453,7 @@ export class ReportsAPI {
         .remove([fileInfo.storage_path]);
 
       if (storageError) {
-        console.error('Error deleting from storage:', storageError);
+        log.error('Error deleting from storage', storageError);
       }
 
       // Delete from database
@@ -469,7 +470,7 @@ export class ReportsAPI {
       };
 
     } catch (error) {
-      console.error('Error deleting report file:', error);
+      log.error('Error deleting report file', error);
       return {
         success: false,
         message: `Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -491,7 +492,7 @@ export class ReportsAPI {
       };
 
     } catch (error) {
-      console.error('Error getting queue status:', error);
+      log.error('Error getting queue status', error);
       return {
         success: false,
         message: 'Failed to get queue status'
@@ -520,7 +521,7 @@ export class ReportsAPI {
       };
 
     } catch (error) {
-      console.error('Error processing report queue:', error);
+      log.error('Error processing report queue', error);
       return {
         success: false,
         processed_count: 0,
@@ -544,7 +545,7 @@ export class ReportsAPI {
           requested_at: new Date().toISOString()
         });
     } catch (error) {
-      console.error('Error logging report request:', error);
+      log.error('Error logging report request', error);
     }
   }
 
@@ -558,7 +559,7 @@ export class ReportsAPI {
 
       return data?.created_by === userId || data?.is_public === true;
     } catch (error) {
-      console.error('Error verifying file access:', error);
+      log.error('Error verifying file access', error);
       return false;
     }
   }

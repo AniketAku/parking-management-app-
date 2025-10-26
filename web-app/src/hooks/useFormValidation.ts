@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getValidationRulesFromSettings } from '../utils/helpers'
+import { log } from '../utils/secureLogger'
 
 interface ValidationRules {
   vehicleNumber: {
@@ -60,7 +61,7 @@ export const useFormValidation = () => {
         })
         setError(null)
       } catch (err) {
-        console.error('Failed to load validation rules:', err)
+        log.error('Failed to load validation rules', err)
         setError('Failed to load validation rules, using defaults')
         setValidationRules(DEFAULT_VALIDATION_RULES)
       } finally {

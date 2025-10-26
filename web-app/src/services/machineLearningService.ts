@@ -1,6 +1,7 @@
 // Machine Learning Service for Predictive Analytics
 // Comprehensive ML models for demand forecasting, revenue optimization, and anomaly detection
 
+import { log } from '../utils/secureLogger'
 import { analyticsService } from './analyticsService'
 import type { ParkingEntry } from '../types'
 
@@ -262,9 +263,9 @@ export class DemandForecastingModel {
           r2Score: 0.85
         }
       }
-      
+
     } catch (error) {
-      console.error('Model retraining failed:', error)
+      log.error('Model retraining failed', error)
       throw error
     }
   }

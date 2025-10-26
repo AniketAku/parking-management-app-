@@ -13,7 +13,7 @@ export interface ParkingEntry {
   exitTime?: Date
   status: 'Active' | 'Exited' | 'Overstay'  // UPDATED: Changed from 'Parked' to 'Active', added 'Overstay'
   paymentStatus: 'Paid' | 'Pending' | 'Partial' | 'Failed'  // UPDATED: New database values
-  paymentType?: 'Cash' | 'Card' | 'UPI' | 'Net Banking' | 'Online'  // UPDATED: Match business settings
+  paymentType?: 'Cash' | 'Online' | 'Mixed'  // SIMPLIFIED: Cash, Online, or Mixed (multiple payment methods)
   parkingFee?: number      // UPDATED: Renamed from calculatedFee/actualFee to match database
   actualFee?: number       // Database field: actual fee paid
   calculatedFee?: number   // Database field: calculated fee
@@ -73,6 +73,15 @@ export interface VehicleExitForm {
   paymentStatus: ParkingEntry['paymentStatus']
   paymentType?: ParkingEntry['paymentType']
   amountPaid?: number
+  notes?: string
+}
+
+// Payment breakdown for mixed payment modes
+export interface PaymentBreakdown {
+  id?: string  // Temporary ID for UI management
+  mode: 'Cash' | 'Online'
+  amount: number
+  transactionId?: string  // For online payments
   notes?: string
 }
 

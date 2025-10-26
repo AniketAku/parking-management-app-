@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase'
-import type { 
-  ParkingEntry, 
-  ParkingStatistics, 
+import { log } from '../utils/secureLogger'
+import type {
+  ParkingEntry,
+  ParkingStatistics,
   SearchFilters,
   ReportData
 } from '../types'
@@ -73,7 +74,7 @@ class SupabaseApiService {
 
     const { data, error, count } = await query
 
-    console.log('🔍 SUPABASE API - Query results:', {
+    log.debug('SUPABASE API - Query results', {
       filters: filters,
       rawDataCount: data?.length || 0,
       error: error?.message,
@@ -339,7 +340,7 @@ class SupabaseApiService {
 
   // Transformation helper methods
   private transformDatabaseToFrontend(data: any): ParkingEntry {
-    console.log('🔧 SUPABASE API - Transforming data from DB:', {
+    log.debug('SUPABASE API - Transforming data from DB', {
       id: data.id,
       vehicleNumber: data.vehicle_number,
       actual_fee: data.actual_fee,

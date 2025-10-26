@@ -2,6 +2,7 @@
 // Provides comprehensive business intelligence and predictive analytics capabilities
 
 import { supabase } from '../lib/supabase'
+import { log } from '../utils/secureLogger'
 import type { ParkingEntry, ParkingStatistics } from '../types'
 
 // Advanced Analytics Types
@@ -214,7 +215,7 @@ class AdvancedAnalyticsService {
       return kpis
       
     } catch (error) {
-      console.error('Error calculating advanced KPIs:', error)
+      log.error('Error calculating advanced KPIs', error)
       throw new Error('Failed to calculate advanced KPIs')
     }
   }
@@ -247,7 +248,7 @@ class AdvancedAnalyticsService {
       return insights
       
     } catch (error) {
-      console.error('Error generating predictive insights:', error)
+      log.error('Error generating predictive insights', error)
       throw new Error('Failed to generate predictive insights')
     }
   }
@@ -278,7 +279,7 @@ class AdvancedAnalyticsService {
       return bi
       
     } catch (error) {
-      console.error('Error generating business intelligence:', error)
+      log.error('Error generating business intelligence', error)
       throw new Error('Failed to generate business intelligence')
     }
   }
@@ -334,7 +335,7 @@ class AdvancedAnalyticsService {
       return [...occupancyAnomalies, ...revenueAnomalies, ...durationAnomalies]
       
     } catch (error) {
-      console.error('Error detecting anomalies:', error)
+      log.error('Error detecting anomalies', error)
       return []
     }
   }
@@ -381,7 +382,7 @@ class AdvancedAnalyticsService {
       }
       
     } catch (error) {
-      console.error('Error analyzing revenue:', error)
+      log.error('Error analyzing revenue', error)
       throw new Error('Failed to analyze revenue')
     }
   }

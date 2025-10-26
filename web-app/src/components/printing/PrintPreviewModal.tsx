@@ -7,6 +7,7 @@ import { Input } from '../ui/Input'
 import { ParkingTicketPreview } from './ParkingTicketPreview'
 import type { ParkingTicketData, PrintResult } from './PrintButton'
 import type { PrinterProfile } from '../../types/printerConfig'
+import { log } from '../../utils/secureLogger'
 
 interface PrintPreviewModalProps {
   ticketData: ParkingTicketData
@@ -47,7 +48,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
         setSelectedPrinter(defaultPrinter.id)
       }
     } catch (error) {
-      console.error('Failed to load printer profiles:', error)
+      log.error('Failed to load printer profiles', error)
     }
   }
 

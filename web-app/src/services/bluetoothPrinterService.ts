@@ -13,6 +13,7 @@ import type {
 import type { PrintResult } from '../types/printQueue'
 import { BluetoothConstants } from '../types/bluetoothPrinter'
 import { ESCPOSBuilder } from '../utils/escposBuilder'
+import { log } from '../utils/secureLogger'
 
 export class BluetoothPrinterManager implements BluetoothPrinterService {
   private static instance: BluetoothPrinterManager
@@ -39,7 +40,7 @@ export class BluetoothPrinterManager implements BluetoothPrinterService {
       const availability = await navigator.bluetooth.getAvailability()
       return availability
     } catch (error) {
-      console.warn('Could not check Bluetooth availability:', error)
+      log.warn('Could not check Bluetooth availability', error)
       return false
     }
   }
@@ -59,13 +60,13 @@ export class BluetoothPrinterManager implements BluetoothPrinterService {
             throw new Error('Location permission required for Bluetooth discovery on mobile devices')
           }
         } catch (permError) {
-          console.warn('Location permission check failed:', permError)
+          log.warn('Location permission check failed', permError)
         }
       }
 
       return true
     } catch (error) {
-      console.error('Bluetooth permission request failed:', error)
+      log.error('Bluetooth permission request failed', error)
       return false
     }
   }
@@ -167,7 +168,7 @@ export class BluetoothPrinterManager implements BluetoothPrinterService {
       }
       this.connectedDevices.delete(deviceId)
     } catch (error) {
-      console.error('Bluetooth disconnect error:', error)
+      log.error('Bluetooth disconnect error', error)
     }
   }
 
@@ -342,7 +343,7 @@ export class BluetoothPrinterManager implements BluetoothPrinterService {
       pairedDevice.connected = false
     }
 
-    console.log(`Bluetooth printer ${deviceId} disconnected`)
+    log.info('Bluetooth printer disconnected', { deviceId })
   }
 
   private initializeTransmissionStats(deviceId: string): void {

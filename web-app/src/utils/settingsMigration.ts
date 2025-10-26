@@ -1,5 +1,6 @@
 import { settingsService } from '../services/settingsService'
 import type { Setting, SettingCategory } from '../types/settings'
+import { log } from './secureLogger'
 
 /**
  * Settings Migration Utility
@@ -431,7 +432,7 @@ export class SettingsMigration {
       
       return false
     } catch (error) {
-      console.error('Error checking migration status:', error)
+      log.error('Error checking migration status', error)
       return true // Assume migration needed if we can't check
     }
   }
@@ -441,7 +442,7 @@ export class SettingsMigration {
    */
   static async migrateLegacySettings(): Promise<void> {
     try {
-      console.log('🔄 Starting settings migration...')
+      log.info('Starting settings migration')
       
       const existingSettings = await settingsService.getAllSettings()
       const existingKeys = new Set(existingSettings.map(s => s.key))
@@ -460,17 +461,17 @@ export class SettingsMigration {
               defaultSetting.level
             )
             updatedCount++
-            console.log(`✅ Updated setting: ${defaultSetting.key}`)
+            log.success('Updated setting', { key: defaultSetting.key })
           }
         } else {
           // Create new setting
           await settingsService.createSetting(defaultSetting)
           migratedCount++
-          console.log(`➕ Created setting: ${defaultSetting.key}`)
+          log.success('Created setting', { key: defaultSetting.key })
         }
       }
-      
-      console.log(`✅ Migration completed: ${migratedCount} created, ${updatedCount} updated`)
+
+      log.success('Migration completed', { created: migratedCount, updated: updatedCount })
       
       // Create audit log entry
       await settingsService.createAuditEntry({
@@ -479,9 +480,9 @@ export class SettingsMigration {
         details: `Migrated ${migratedCount} new settings, updated ${updatedCount} existing settings`,
         user_id: 'system'
       })
-      
+
     } catch (error) {
-      console.error('❌ Settings migration failed:', error)
+      log.error('Settings migration failed', error)
       throw new Error(`Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -501,15 +502,15 @@ export class SettingsMigration {
           categories: [...new Set(settings.map(s => s.category))]
         }
       }
-      
+
       // Store in localStorage as fallback
       const backupKey = `settings-backup-${Date.now()}`
       localStorage.setItem(backupKey, JSON.stringify(backup))
-      
-      console.log(`📦 Settings backup created: ${backupKey}`)
+
+      log.success('Settings backup created', { backupKey })
       return backupKey
     } catch (error) {
-      console.error('Failed to create settings backup:', error)
+      log.error('Failed to create settings backup', error)
       throw new Error('Backup creation failed')
     }
   }
@@ -523,20 +524,20 @@ export class SettingsMigration {
       if (!backupData) {
         throw new Error('Backup not found')
       }
-      
+
       const backup = JSON.parse(backupData)
       if (!backup.settings || !Array.isArray(backup.settings)) {
         throw new Error('Invalid backup format')
       }
-      
+
       // Clear existing settings and restore from backup
-      console.log('🔄 Restoring settings from backup...')
-      
+      log.info('Restoring settings from backup')
+
       for (const setting of backup.settings) {
         await settingsService.createSetting(setting)
       }
-      
-      console.log(`✅ Restored ${backup.settings.length} settings from backup`)
+
+      log.success('Restored settings from backup', { count: backup.settings.length })
       
       // Create audit log entry
       await settingsService.createAuditEntry({
@@ -545,9 +546,9 @@ export class SettingsMigration {
         details: `Restored settings from backup: ${backupKey}`,
         user_id: 'system'
       })
-      
+
     } catch (error) {
-      console.error('❌ Backup restoration failed:', error)
+      log.error('Backup restoration failed', error)
       throw new Error(`Restoration failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -558,29 +559,29 @@ export class SettingsMigration {
   static async validateMigratedSettings(): Promise<boolean> {
     try {
       const settings = await settingsService.getAllSettings()
-      
+
       // Check all required settings exist
       for (const defaultSetting of DEFAULT_SETTINGS) {
         const exists = settings.find(s => s.key === defaultSetting.key)
         if (!exists) {
-          console.error(`❌ Missing required setting: ${defaultSetting.key}`)
+          log.error('Missing required setting', { key: defaultSetting.key })
           return false
         }
-        
+
         // Validate setting value if validation rules exist
         if (defaultSetting.validation && exists.validation) {
           const isValid = await settingsService.validateSetting(exists)
           if (!isValid) {
-            console.error(`❌ Invalid setting value: ${defaultSetting.key}`)
+            log.error('Invalid setting value', { key: defaultSetting.key })
             return false
           }
         }
       }
-      
-      console.log('✅ All migrated settings validated successfully')
+
+      log.success('All migrated settings validated successfully')
       return true
     } catch (error) {
-      console.error('❌ Settings validation failed:', error)
+      log.error('Settings validation failed', error)
       return false
     }
   }
@@ -600,16 +601,16 @@ export class BackwardCompatibility {
    */
   static async initialize(): Promise<boolean> {
     try {
-      console.log('🔄 Initializing BackwardCompatibility system...')
-      
+      log.info('Initializing BackwardCompatibility system')
+
       // Test basic settings service connectivity
       const testValue = await settingsService.getSetting('test_connectivity')
-      console.log('✅ Settings service connectivity test completed')
-      
+      log.success('Settings service connectivity test completed')
+
       this._isInitialized = true
       return true
     } catch (error) {
-      console.warn('⚠️ BackwardCompatibility initialization failed, using fallback mode:', error)
+      log.warn('BackwardCompatibility initialization failed, using fallback mode', error)
       this._isInitialized = false
       return false
     }
@@ -633,84 +634,84 @@ export class BackwardCompatibility {
     try {
       // Quick return for failed settings to avoid repeated failures
       if (this._failedSettings.has(key)) {
-        console.log(`⚡ Quick fallback for ${key} (previously failed)`)
+        log.debug('Quick fallback for previously failed setting', { key })
         return fallbackValue || this.getLegacyValue(key)
       }
 
       // Check cache first (unless skipping)
       if (!skipCache && this._migrationCache.has(key)) {
         const cachedValue = this._migrationCache.get(key)
-        console.log(`📦 Cache hit for setting: ${key}`)
+        log.debug('Cache hit for setting', { key })
         return cachedValue
       }
-      
+
       // Try to get from settings service with timeout and retries
       let lastError: Error | null = null
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-          console.log(`🔍 Fetching setting ${key} (attempt ${attempt + 1}/${retries + 1})`)
-          
+          log.debug('Fetching setting', { key, attempt: attempt + 1, totalAttempts: retries + 1 })
+
           const value = await this.withTimeout(
             settingsService.getSetting('validation', key),
             timeout,
             `Setting fetch timeout for ${key}`
           )
-          
+
           if (value !== null && value !== undefined) {
-            console.log(`✅ Successfully loaded setting ${key} from service`)
+            log.success('Successfully loaded setting from service', { key })
             this._migrationCache.set(key, value)
             return value
           }
-          
+
           // Setting exists but is null/undefined
-          console.log(`⚠️ Setting ${key} exists but has null/undefined value`)
+          log.warn('Setting exists but has null/undefined value', { key })
           break
-          
+
         } catch (error) {
           lastError = error as Error
-          console.warn(`❌ Attempt ${attempt + 1} failed for setting ${key}:`, error)
-          
+          log.warn('Setting fetch attempt failed', { key, attempt: attempt + 1, error })
+
           if (attempt < retries) {
             // Wait before retry (exponential backoff)
             await this.delay(Math.pow(2, attempt) * 100)
           }
         }
       }
-      
+
       // All attempts failed, mark as failed and use fallback
       if (lastError) {
         this._failedSettings.add(key)
-        console.warn(`🔴 All attempts failed for setting ${key}, using fallback`)
+        log.warn('All attempts failed for setting, using fallback', { key })
       }
-      
+
       // Try legacy values
       const legacyValue = this.getLegacyValue(key)
       if (legacyValue !== undefined) {
-        console.log(`🟡 Using legacy value for ${key}`)
+        log.info('Using legacy value for setting', { key })
         this._migrationCache.set(key, legacyValue)
         return legacyValue
       }
-      
+
       // Final fallback
-      console.log(`🔄 Using provided fallback for ${key}`)
+      log.debug('Using provided fallback for setting', { key })
       const finalValue = fallbackValue !== undefined ? fallbackValue : null
       this._migrationCache.set(key, finalValue)
       return finalValue
-      
+
     } catch (error) {
-      console.error(`💥 Critical error in getSettingWithFallback for ${key}:`, error)
-      
+      log.error('Critical error in getSettingWithFallback', { key, error })
+
       // Emergency fallback
-      const emergencyValue = fallbackValue !== undefined 
-        ? fallbackValue 
+      const emergencyValue = fallbackValue !== undefined
+        ? fallbackValue
         : this.getLegacyValue(key)
-        
+
       if (emergencyValue !== undefined) {
-        console.log(`🚨 Emergency fallback activated for ${key}`)
+        log.warn('Emergency fallback activated', { key })
         return emergencyValue
       }
-      
-      console.error(`💀 No fallback available for ${key}`)
+
+      log.error('No fallback available for setting', { key })
       return null
     }
   }
@@ -762,7 +763,7 @@ export class BackwardCompatibility {
    * Clear migration cache
    */
   static clearCache(): void {
-    console.log('🗑️ Clearing settings cache')
+    log.info('Clearing settings cache')
     this._migrationCache.clear()
     this._failedSettings.clear()
   }
@@ -790,10 +791,10 @@ export class BackwardCompatibility {
   static resetFailedSettings(keys?: string[]): void {
     if (keys) {
       keys.forEach(key => this._failedSettings.delete(key))
-      console.log(`🔄 Reset failed status for settings: ${keys.join(', ')}`)
+      log.info('Reset failed status for settings', { keys: keys.join(', ') })
     } else {
       this._failedSettings.clear()
-      console.log('🔄 Reset all failed settings status')
+      log.info('Reset all failed settings status')
     }
   }
 
@@ -815,7 +816,7 @@ export class BackwardCompatibility {
     const errors: Record<string, string> = {}
 
     try {
-      console.log(`🚀 Preloading ${keys.length} settings (parallel: ${parallel})`)
+      log.info('Preloading settings', { count: keys.length, parallel })
 
       if (parallel) {
         // Load all settings in parallel
@@ -852,25 +853,25 @@ export class BackwardCompatibility {
           } catch (error) {
             failed.push(key)
             errors[key] = error instanceof Error ? error.message : 'Unknown error'
-            
+
             if (!continueOnError) {
-              console.error(`💥 Preload stopped at ${key} due to error:`, error)
+              log.error('Preload stopped due to error', { key, error })
               break
             }
           }
         }
       }
 
-      console.log(`✅ Preload completed: ${successful.length} successful, ${failed.length} failed`)
-      
+      log.success('Preload completed', { successful: successful.length, failed: failed.length })
+
       if (failed.length > 0) {
-        console.warn('⚠️ Failed to preload settings:', failed)
+        log.warn('Failed to preload settings', { failed })
       }
 
       return { successful, failed, errors }
-      
+
     } catch (error) {
-      console.error('💥 Critical error during settings preload:', error)
+      log.error('Critical error during settings preload', error)
       return {
         successful,
         failed: keys,
@@ -888,24 +889,24 @@ export class BackwardCompatibility {
     error?: string
   }> {
     const startTime = Date.now()
-    
+
     try {
       await this.withTimeout(
         settingsService.getSetting('connectivity_test'),
         2000,
         'Connectivity test timeout'
       )
-      
+
       const responseTime = Date.now() - startTime
-      console.log(`✅ Settings service connectivity test passed (${responseTime}ms)`)
-      
+      log.success('Settings service connectivity test passed', { responseTime })
+
       return { success: true, responseTime }
     } catch (error) {
       const responseTime = Date.now() - startTime
       const errorMessage = error instanceof Error ? error.message : 'Unknown connectivity error'
-      
-      console.warn(`❌ Settings service connectivity test failed (${responseTime}ms):`, errorMessage)
-      
+
+      log.warn('Settings service connectivity test failed', { responseTime, error: errorMessage })
+
       return { success: false, responseTime, error: errorMessage }
     }
   }

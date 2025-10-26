@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { PrintQueueStatus as PrintQueueStatusType, PrinterProfile } from '../../types/printQueue';
 import { printQueueApi } from '../../services/printQueueApi';
+import { log } from '../../utils/secureLogger';
 
 interface PrintQueueStatusProps {
   showDetailedStats?: boolean;
@@ -43,7 +44,7 @@ const PrintQueueStatus: React.FC<PrintQueueStatusProps> = ({
       const printersData = await printQueueApi.getAvailablePrinters();
       setPrinters(printersData);
     } catch (err) {
-      console.error('Failed to load printers:', err);
+      log.error('Failed to load printers', err);
     }
   };
 

@@ -12,6 +12,7 @@ import type {
 } from '../types/thermalPrinter';
 import { thermalPrinterManager } from '../services/thermalPrinterService';
 import { thermalPrintUtilities } from '../services/thermalPrintQueueIntegration';
+import { log } from '../utils/secureLogger';
 
 interface UseThermalPrinterOptions {
   autoConnect?: boolean;
@@ -317,7 +318,7 @@ export const useThermalPrinter = ({
       
       return status;
     } catch (error) {
-      console.error('Error checking printer status:', error);
+      log.error('Error checking printer status', error);
       return null;
     }
   }, []);

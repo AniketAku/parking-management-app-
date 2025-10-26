@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { UserService, type UserRegistration } from '../../services/userService'
+import { log } from '../../utils/secureLogger'
 
 interface RegistrationFormProps {
   onSuccess?: () => void
@@ -83,7 +84,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       }
     } catch (error) {
       toast.error('Registration failed. Please try again.')
-      console.error('Registration error:', error)
+      log.error('Registration error', error)
     } finally {
       setIsLoading(false)
     }

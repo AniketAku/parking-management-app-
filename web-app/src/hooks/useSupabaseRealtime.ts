@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabaseRealtime } from '../services/supabaseRealtime'
 import { api as supabaseApi } from '../services/supabaseApi'
 import { useParkingStore } from '../stores/parkingStore'
+import { log } from '../utils/secureLogger'
 import type { ParkingEntry } from '../types'
 
 export interface UseSupabaseRealtimeOptions {
@@ -91,7 +92,7 @@ export const useSupabaseRealtime = (options: UseSupabaseRealtimeOptions = {}) =>
           ...prev,
           lastUpdate: new Date()
         }))
-        console.log('🚗 New vehicle entry:', entry.vehicleNumber)
+        log.debug('New vehicle entry', { vehicleNumber: entry.vehicleNumber })
       })
 
       const onEntryUpdated = supabaseRealtime.on('entry:updated', (entry: ParkingEntry) => {
@@ -102,9 +103,9 @@ export const useSupabaseRealtime = (options: UseSupabaseRealtimeOptions = {}) =>
         }))
 
         if (entry.status === 'Exited') {
-          console.log('🚪 Vehicle exit processed:', entry.vehicleNumber)
+          log.debug('Vehicle exit processed', { vehicleNumber: entry.vehicleNumber })
         } else {
-          console.log('📝 Vehicle updated:', entry.vehicleNumber)
+          log.debug('Vehicle updated', { vehicleNumber: entry.vehicleNumber })
         }
       })
 
@@ -114,7 +115,7 @@ export const useSupabaseRealtime = (options: UseSupabaseRealtimeOptions = {}) =>
           ...prev,
           lastUpdate: new Date()
         }))
-        console.log('🗑️ Vehicle entry deleted:', entryId)
+        log.debug('Vehicle entry deleted', { entryId })
       })
 
       cleanupFunctions.push(onEntryCreated, onEntryUpdated, onEntryDeleted)
@@ -146,7 +147,7 @@ export const useSupabaseRealtime = (options: UseSupabaseRealtimeOptions = {}) =>
       await supabaseApi.createParkingEntry(entry)
       // Realtime will handle the notification
     } catch (error) {
-      console.error('Failed to create entry:', error)
+      log.error('Failed to create entry', error)
       throw error
     }
   }, [])
@@ -156,7 +157,7 @@ export const useSupabaseRealtime = (options: UseSupabaseRealtimeOptions = {}) =>
       await supabaseApi.updateParkingEntry(entryId, updates)
       // Realtime will handle the notification
     } catch (error) {
-      console.error('Failed to update entry:', error)
+      log.error('Failed to update entry', error)
       throw error
     }
   }, [])
@@ -175,7 +176,7 @@ export const useSupabaseRealtime = (options: UseSupabaseRealtimeOptions = {}) =>
       })
       // Realtime will handle the notification
     } catch (error) {
-      console.error('Failed to process exit:', error)
+      log.error('Failed to process exit', error)
       throw error
     }
   }, [])
@@ -195,7 +196,7 @@ export const useSupabaseRealtime = (options: UseSupabaseRealtimeOptions = {}) =>
       await supabaseRealtime.connect()
       updateConnectionState()
     } catch (error) {
-      console.error('Failed to connect to real-time updates:', error)
+      log.error('Failed to connect to real-time updates', error)
     }
   }, [updateConnectionState])
 

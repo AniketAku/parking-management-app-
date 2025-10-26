@@ -1,4 +1,5 @@
 import type { ESCPOSCommand, ESCPOSBuilder as IESCPOSBuilder } from '../types/bluetoothPrinter'
+import { log } from './secureLogger'
 
 export class ESCPOSBuilder implements IESCPOSBuilder {
   private commands: number[] = []
@@ -72,7 +73,7 @@ export class ESCPOSBuilder implements IESCPOSBuilder {
 
   // Add image (simplified for now)
   image(imageData: Uint8Array): ESCPOSBuilder {
-    console.warn('Image printing not yet implemented for Bluetooth ESC/POS')
+    log.warn('Image printing not yet implemented for Bluetooth ESC/POS')
     return this
   }
 

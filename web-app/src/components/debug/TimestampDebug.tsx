@@ -1,41 +1,42 @@
 import React from 'react';
 import { getParkingTimestamp } from '../../utils/timezone';
 import { formatDateTime } from '../../utils/helpers';
+import { log } from '../../utils/secureLogger';
 
 // Debug component to test timestamp generation and formatting
 export const TimestampDebug: React.FC = () => {
   const testTimestamp = () => {
-    console.group('🔍 Timestamp Debug Test');
-    
     const now = new Date();
     const generated = getParkingTimestamp();
     const parsed = new Date(generated);
     const formatted = formatDateTime(parsed);
-    
-    console.log('1. Current browser time:', now.toString());
-    console.log('2. Current time (toISOString):', now.toISOString());
-    console.log('3. Generated timestamp:', generated);
-    console.log('4. Parsed back to Date:', parsed.toString());
-    console.log('5. Formatted for display:', formatted);
-    console.log('6. Manual IST format:', now.toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    }));
-    console.log('7. Browser local format:', now.toLocaleString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    }));
-    
-    console.groupEnd();
+
+    const debugData = {
+      currentBrowserTime: now.toString(),
+      currentTimeISO: now.toISOString(),
+      generatedTimestamp: generated,
+      parsedBackToDate: parsed.toString(),
+      formattedForDisplay: formatted,
+      manualISTFormat: now.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
+      browserLocalFormat: now.toLocaleString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      })
+    };
+
+    log.debug('Timestamp Debug Test', debugData);
   };
 
   return (

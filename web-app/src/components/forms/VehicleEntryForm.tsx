@@ -6,9 +6,11 @@ import { useParkingStore } from '../../stores/parkingStore'
 import { usePermissions } from '../../hooks/useAuth'
 import { useBusinessSettings } from '../../hooks/useSettings'
 import { useFormValidation } from '../../hooks/useFormValidation'
+import { useShiftLinking } from '../../hooks/useShiftLinking'
 import parkingEntryService from '../../services/parkingEntryService'
 import toast from 'react-hot-toast'
 import { useErrorHandler } from '../../hooks/useErrorHandler'
+import { log } from '../../utils/secureLogger'
 
 interface VehicleEntryFormProps {
   onSuccess?: (entry: ParkingEntry) => void
@@ -32,7 +34,10 @@ export const VehicleEntryForm: React.FC<VehicleEntryFormProps> = ({
     getVehicleRate
   } = useBusinessSettings()
 
-  console.log('🔍 VehicleEntryForm - Business Settings State:', {
+  // Shift linking hook to get active shift ID
+  const { state: shiftLinkingState } = useShiftLinking()
+
+  log.debug('VehicleEntryForm - Business Settings State', {
     vehicleRates,
     vehicleTypes,
     settingsLoading,
@@ -150,7 +155,7 @@ export const VehicleEntryForm: React.FC<VehicleEntryFormProps> = ({
     ]
   }, [vehicleTypes])
 
-  console.log('🚗 Vehicle types options:', vehicleTypeOptions)
+  log.debug('Vehicle types options', { vehicleTypeOptions })
 
   // Calculate daily rate for selected vehicle type
   const dailyRate = useMemo(() => {
@@ -198,7 +203,8 @@ export const VehicleEntryForm: React.FC<VehicleEntryFormProps> = ({
         driver_phone: formData.driverPhone?.trim() || undefined,
         notes: formData.notes?.trim() || undefined,
         entry_time: entryDateTime.toISOString(),
-        parking_fee: dailyRate
+        parking_fee: dailyRate,
+        shift_session_id: shiftLinkingState.activeShiftId || undefined
       }
 
       const result = await parkingEntryService.createEntry(entryData)
@@ -223,7 +229,7 @@ export const VehicleEntryForm: React.FC<VehicleEntryFormProps> = ({
         throw new Error('Failed to create vehicle entry')
       }
     } catch (error) {
-      console.error('Vehicle entry creation failed:', error)
+      log.error('Vehicle entry creation failed', error)
       handleError(error, 'Failed to create vehicle entry')
     } finally {
       setIsSubmitting(false)

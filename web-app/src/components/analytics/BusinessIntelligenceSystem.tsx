@@ -5,6 +5,7 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/Button'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
 import { Progress } from '../ui/progress'
+import { log } from '../../utils/secureLogger'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, ComposedChart,
@@ -218,7 +219,7 @@ export const BusinessIntelligenceSystem: React.FC = () => {
   ]
 
   const refreshAll = () => {
-    console.log('Refreshing BI data...')
+    log.debug('Refreshing BI data')
   }
 
   // Generate executive insights

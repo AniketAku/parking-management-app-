@@ -4,14 +4,15 @@
  */
 
 import { validateAllSettings } from './settingsValidationService'
-import type { 
-  AllSettings, 
-  SettingsExportData, 
-  SettingsImportOptions, 
+import { log } from '../utils/secureLogger'
+import type {
+  AllSettings,
+  SettingsExportData,
+  SettingsImportOptions,
   SettingCategory,
   ValidationResult,
   SettingsVersion,
-  SettingsMigration 
+  SettingsMigration
 } from '../types/settings'
 
 // Current schema version
@@ -176,7 +177,7 @@ class SettingsImportExportService {
       if (importData.metadata.checksum) {
         const calculatedChecksum = await this.calculateChecksum(importData.settings)
         if (calculatedChecksum !== importData.metadata.checksum) {
-          console.warn('Checksum mismatch - file may be corrupted or modified')
+          log.warn('Checksum mismatch - file may be corrupted or modified')
         }
       }
       

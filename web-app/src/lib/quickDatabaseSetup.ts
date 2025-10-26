@@ -1,14 +1,15 @@
 import { supabase } from './supabase'
+import { log } from '../utils/secureLogger'
 
 /**
  * Quick database setup - run this from browser console if you can't access Supabase SQL editor
  */
 export const quickDatabaseSetup = async () => {
-  console.log('🚀 Starting quick database setup...')
+  log.info('Starting quick database setup')
   
   try {
     // Try to add missing columns (will fail gracefully if they already exist)
-    console.log('Step 1: Checking database structure...')
+    log.debug('Step 1: Checking database structure')
     
     // Test insert to see what columns are missing
     const testUser = {
@@ -29,10 +30,10 @@ export const quickDatabaseSetup = async () => {
       .select()
     
     if (insertError) {
-      console.log('Insert test result:', insertError.message)
-      
+      log.debug('Insert test result', { message: insertError.message })
+
       if (insertError.message.includes('is_approved')) {
-        console.log('❌ Missing is_approved column - you need to run the SQL manually')
+        log.error('Missing is_approved column - you need to run the SQL manually')
         return {
           success: false,
           message: 'Missing database columns. Please run the SQL script in Supabase dashboard.',
@@ -41,7 +42,7 @@ export const quickDatabaseSetup = async () => {
       }
       
       if (insertError.message.includes('auth_id')) {
-        console.log('❌ Missing auth_id column - you need to run the SQL manually')
+        log.error('Missing auth_id column - you need to run the SQL manually')
         return {
           success: false,
           message: 'Missing database columns. Please run the SQL script in Supabase dashboard.',
@@ -50,7 +51,7 @@ export const quickDatabaseSetup = async () => {
       }
       
       if (insertError.message.includes('row-level security')) {
-        console.log('❌ RLS policy blocking - you need to update policies manually')
+        log.error('RLS policy blocking - you need to update policies manually')
         return {
           success: false,
           message: 'Row-level security is blocking operations. Please run the SQL script in Supabase dashboard.',
@@ -58,7 +59,7 @@ export const quickDatabaseSetup = async () => {
         }
       }
     } else {
-      console.log('✅ Test insert successful - cleaning up...')
+      log.debug('Test insert successful - cleaning up')
       // Clean up test user
       await supabase
         .from('users')
@@ -67,7 +68,7 @@ export const quickDatabaseSetup = async () => {
     }
     
     // Try to create/update the admin user
-    console.log('Step 2: Setting up admin user...')
+    log.debug('Step 2: Setting up admin user')
     
     const { error: adminError } = await supabase
       .from('users')
@@ -85,14 +86,14 @@ export const quickDatabaseSetup = async () => {
       })
     
     if (adminError) {
-      console.log('Admin user creation error:', adminError.message)
+      log.error('Admin user creation error', { message: adminError.message })
       return {
         success: false,
         message: `Failed to create admin user: ${adminError.message}`
       }
     }
     
-    console.log('✅ Database setup completed successfully!')
+    log.success('Database setup completed successfully')
     
     return {
       success: true,
@@ -100,7 +101,7 @@ export const quickDatabaseSetup = async () => {
     }
     
   } catch (error) {
-    console.error('Database setup failed:', error)
+    log.error('Database setup failed', error)
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error occurred'

@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { newSettingsService, type SettingCategory, type BusinessSettings, type UIThemeSettings } from '../services/newSettingsService'
+import { log } from '../utils/secureLogger'
 
 // ================================================
 // GENERIC SETTINGS HOOK
@@ -43,11 +44,17 @@ export function useSettings<T extends Record<string, any>>(
       })
       
       setSettings(data)
-      console.log(`🔧 Loaded ${Object.keys(data).length} settings for category ${category}`)
+      log.debug('Category settings loaded', {
+        category,
+        settingsCount: Object.keys(data).length
+      })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load settings'
       setError(errorMessage)
-      console.error(`Failed to load ${category} settings:`, err)
+      log.error('Failed to load category settings', {
+        category,
+        error: err
+      })
     } finally {
       setLoading(false)
     }
@@ -67,7 +74,10 @@ export function useSettings<T extends Record<string, any>>(
       
       return success
     } catch (err) {
-      console.error(`Failed to update ${category} settings:`, err)
+      log.error('Failed to update category settings', {
+        category,
+        error: err
+      })
       return false
     }
   }, [category, throwOnError])
@@ -78,14 +88,18 @@ export function useSettings<T extends Record<string, any>>(
       const success = await newSettingsService.updateSetting(category, key, value, {
         throwOnError
       })
-      
+
       if (success) {
         setSettings(prev => ({ ...prev, [key]: value }))
       }
-      
+
       return success
     } catch (err) {
-      console.error(`Failed to update setting ${category}.${key}:`, err)
+      log.error('Failed to update setting', {
+        category,
+        key,
+        error: err
+      })
       return false
     }
   }, [category, throwOnError])
@@ -105,7 +119,10 @@ export function useSettings<T extends Record<string, any>>(
     if (!autoRefresh) return
 
     const unsubscribe = newSettingsService.subscribeToCategory(category, (changedSettings) => {
-      console.log(`📡 Settings updated for ${category}:`, changedSettings)
+      log.debug('Category settings updated', {
+        category,
+        changes: changedSettings
+      })
       setSettings(prev => ({ ...prev, ...changedSettings }))
     })
 
@@ -230,7 +247,11 @@ export function useSetting<T = any>(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load setting'
       setError(errorMessage)
-      console.error(`Failed to load setting ${category}.${key}:`, err)
+      log.error('Failed to load setting', {
+        category,
+        key,
+        error: err
+      })
     } finally {
       setLoading(false)
     }
@@ -242,14 +263,18 @@ export function useSetting<T = any>(
       const success = await newSettingsService.updateSetting(category, key, newValue, {
         throwOnError
       })
-      
+
       if (success) {
         setValue(newValue)
       }
-      
+
       return success
     } catch (err) {
-      console.error(`Failed to update setting ${category}.${key}:`, err)
+      log.error('Failed to update setting', {
+        category,
+        key,
+        error: err
+      })
       return false
     }
   }, [category, key, throwOnError])

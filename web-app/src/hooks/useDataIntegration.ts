@@ -4,6 +4,7 @@ import { useRealTimeUpdates } from './useRealTimeUpdates'
 import * as useParkingApi from './useParkingApi'
 import { useConnectionStatus } from './useApi'
 import { getRevenueAmount } from '../utils/helpers'
+import { log } from '../utils/secureLogger'
 import type { ParkingEntry } from '../types'
 
 /**
@@ -44,7 +45,7 @@ export function useDataIntegration() {
         // Real-time update will be handled by Socket.IO automatically
         // when other clients need to see the update
       } catch (error) {
-        console.warn('API create failed, falling back to real-time only:', error)
+        log.warn('API create failed, falling back to real-time only', error)
         createEntryRealTime(entry)
       }
     } else {
@@ -59,10 +60,11 @@ export function useDataIntegration() {
       try {
         // Use API first for authoritative data
         await updateEntryApi({ id, updates })
-        
+
+
         // Real-time update will be handled by Socket.IO automatically
       } catch (error) {
-        console.warn('API update failed, falling back to real-time only:', error)
+        log.warn('API update failed, falling back to real-time only', error)
         updateEntryRealTime(id, updates)
       }
     } else {
@@ -80,10 +82,11 @@ export function useDataIntegration() {
       try {
         // Use API first for authoritative data
         await processExitApi({ id, exitData })
-        
+
+
         // Real-time update will be handled by Socket.IO automatically
       } catch (error) {
-        console.warn('API exit processing failed, falling back to real-time only:', error)
+        log.warn('API exit processing failed, falling back to real-time only', error)
         processExitRealTime(id, exitData)
       }
     } else {
@@ -98,7 +101,7 @@ export function useDataIntegration() {
       // Refresh statistics when connection is restored
       refreshStats()
         .catch(error => {
-          console.warn('Failed to refresh statistics after reconnection:', error)
+          log.warn('Failed to refresh statistics after reconnection', error)
         })
     }
   }, [isFullyConnected, refreshStats, loading])

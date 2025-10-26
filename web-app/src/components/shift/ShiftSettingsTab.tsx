@@ -4,6 +4,7 @@ import { ShiftLinkingState, ShiftLinkingMetrics } from '../../hooks/useShiftLink
 import { Card, CardHeader, CardContent } from '../ui'
 import { Button } from '../ui/Button'
 import toast from 'react-hot-toast'
+import { log } from '../../utils/secureLogger'
 
 interface ShiftSettingsTabProps {
   linkingState: ShiftLinkingState
@@ -107,7 +108,7 @@ export const ShiftSettingsTab: React.FC<ShiftSettingsTabProps> = ({
       // For now, we'll use localStorage as the storage mechanism
 
     } catch (error) {
-      console.error('Failed to load settings:', error)
+      log.error('Failed to load settings', error)
       toast.error('Failed to load settings')
     } finally {
       setSettingsLoading(false)
@@ -127,7 +128,7 @@ export const ShiftSettingsTab: React.FC<ShiftSettingsTabProps> = ({
       toast.success('Settings saved successfully')
       setHasUnsavedChanges(false)
     } catch (error) {
-      console.error('Failed to save settings:', error)
+      log.error('Failed to save settings', error)
       toast.error('Failed to save settings')
     } finally {
       setSaving(false)
@@ -195,7 +196,7 @@ export const ShiftSettingsTab: React.FC<ShiftSettingsTabProps> = ({
 
       toast.success(`Cleared ${keys.length} cache items`)
     } catch (error) {
-      console.error('Failed to clear cache:', error)
+      log.error('Failed to clear cache', error)
       toast.error('Failed to clear cache')
     }
   }, [onRefresh])

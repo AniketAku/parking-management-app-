@@ -5,6 +5,7 @@ import type {
 } from '../types/bluetoothPrinter'
 import { bluetoothPrinterService } from './bluetoothPrinterService'
 import { bluetoothConnectionManager } from './bluetoothConnectionManager'
+import { log } from '../utils/secureLogger'
 
 export interface ErrorContext {
   deviceId: string
@@ -191,9 +192,9 @@ export class BluetoothErrorHandler {
   ): Promise<void> {
     const deviceId = error.deviceId
     const attempts = this.recoveryAttempts.get(deviceId) || []
-    
+
     if (attempts.length >= (plan.maxRetries || this.maxRecoveryAttempts)) {
-      console.warn(`Max recovery attempts reached for device ${deviceId}`)
+      log.warn('Max recovery attempts reached for device', { deviceId })
       return
     }
     
@@ -204,22 +205,22 @@ export class BluetoothErrorHandler {
       startTime: new Date(),
       success: false
     }
-    
+
     try {
-      console.log(`Starting auto-recovery attempt ${attempt.attempt} for ${deviceId}`)
-      
+      log.info('Starting auto-recovery attempt', { deviceId, attempt: attempt.attempt })
+
       await this.executeRecoverySteps(error.type, deviceId, plan)
-      
+
       attempt.success = true
       attempt.endTime = new Date()
-      
-      console.log(`Auto-recovery successful for ${deviceId}`)
+
+      log.success('Auto-recovery successful', { deviceId })
     } catch (recoveryError) {
       attempt.success = false
       attempt.endTime = new Date()
       attempt.error = recoveryError instanceof Error ? recoveryError.message : 'Recovery failed'
-      
-      console.error(`Auto-recovery failed for ${deviceId}:`, recoveryError)
+
+      log.error('Auto-recovery failed', { deviceId, error: recoveryError })
     } finally {
       attempts.push(attempt)
       this.recoveryAttempts.set(deviceId, attempts)
@@ -326,7 +327,7 @@ export class BluetoothErrorHandler {
   clearErrorHistory(deviceId: string): void {
     this.errorHistory.delete(deviceId)
     this.recoveryAttempts.delete(deviceId)
-    console.log(`Cleared error history for device ${deviceId}`)
+    log.info('Cleared error history for device', { deviceId })
   }
 
   getAllErrorStats(): {

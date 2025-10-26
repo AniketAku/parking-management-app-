@@ -42,24 +42,24 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Fixed Page Header */}
+      {/* Fixed Page Header - Mobile-first optimized */}
       <div className="sticky-stats">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-text-primary">
+            <h1 className="text-2xl lg:text-3xl font-bold text-text-primary">
               Dashboard
             </h1>
-            <p className="text-text-muted mt-1">
+            <p className="text-base lg:text-sm text-text-muted mt-1">
               Real-time parking management overview
             </p>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             {/* Connection status */}
             <ConnectionStatus showLastUpdate={true} />
-            
+
             {/* Current date */}
-            <div className="text-right">
-              <div className="text-sm text-text-muted">
+            <div className="sm:text-right">
+              <div className="text-base lg:text-sm text-text-muted">
                 {currentDate}
               </div>
             </div>
@@ -80,17 +80,19 @@ export const DashboardPage: React.FC = () => {
 
         {!isConnected && connectionState === 'disconnected' && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 lg:w-4 lg:h-4 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
-                <span className="text-orange-700 font-medium">
-                  Real-time updates unavailable
-                </span>
-                <span className="text-orange-600 text-sm">
-                  - Data may not be current
-                </span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                  <span className="text-base lg:text-sm text-orange-700 font-medium">
+                    Real-time updates unavailable
+                  </span>
+                  <span className="text-sm lg:text-xs text-orange-600">
+                    Data may not be current
+                  </span>
+                </div>
               </div>
             </div>
           </div>

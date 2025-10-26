@@ -2,8 +2,9 @@ import { useCallback } from 'react'
 import { useParkingStore } from '../stores/parkingStore'
 import { api as supabaseApi } from '../services/supabaseApi'
 import { useApi, useMutation } from './useApi'
-import type { 
-  ParkingEntry, 
+import { log } from '../utils/secureLogger'
+import type {
+  ParkingEntry,
   SearchFilters
 } from '../types'
 
@@ -249,7 +250,7 @@ export function useDashboardData() {
         statsQuery.execute()
       ])
     } catch (error) {
-      console.error('Failed to refresh dashboard data:', error)
+      log.error('Failed to refresh dashboard data', error)
     }
   }, [entriesQuery, statsQuery])
 
@@ -278,9 +279,9 @@ export function useDataSync() {
       useParkingStore.getState().setEntries(entriesResponse.data)
       useParkingStore.getState().setStatistics(statistics)
       
-      console.log('🔄 Data synchronized successfully')
+      log.success('Data synchronized successfully')
     } catch (error) {
-      console.error('❌ Data sync failed:', error)
+      log.error('Data sync failed', error)
     }
   }, [])
 

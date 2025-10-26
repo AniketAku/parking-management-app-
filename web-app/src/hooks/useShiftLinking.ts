@@ -6,6 +6,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { shiftLinkingService, type ShiftLinkingResult } from '../services/ShiftLinkingService';
 import { supabase } from '../lib/supabase';
+import { log } from '../utils/secureLogger';
 
 export interface ShiftLinkingState {
   isLinking: boolean;
@@ -153,7 +154,7 @@ export function useShiftLinking(): UseShiftLinkingReturn {
         }));
       }
     } catch (error) {
-      console.warn('No active shift found during initialization');
+      log.warn('No active shift found during initialization', error);
     }
   };
 
@@ -215,7 +216,7 @@ export function useShiftLinking(): UseShiftLinkingReturn {
         linkingSuccessRate: Math.round(successRate * 100) / 100
       });
     } catch (error) {
-      console.error('Error refreshing linking metrics:', error);
+      log.error('Error refreshing linking metrics', error);
     } finally {
       refreshingRef.current = false;
     }
@@ -392,7 +393,7 @@ export function useShiftLinking(): UseShiftLinkingReturn {
     try {
       return await shiftLinkingService.validateShiftLinking(shiftId);
     } catch (error) {
-      console.error('Error validating shift linking:', error);
+      log.error('Error validating shift linking', error);
       throw error;
     }
   }, []);

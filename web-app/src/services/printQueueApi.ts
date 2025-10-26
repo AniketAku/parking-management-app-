@@ -1,12 +1,13 @@
-import type { 
-  PrintJob, 
-  PrintQueueStatus, 
-  PrintHistoryFilters, 
+import type {
+  PrintJob,
+  PrintQueueStatus,
+  PrintHistoryFilters,
   PrinterProfile,
   PrintJobCreate,
   PrintResult,
   PrintStatistics
 } from '../types/printQueue';
+import { log } from '../utils/secureLogger';
 
 const API_BASE_URL = '/api/print-queue';
 
@@ -346,12 +347,12 @@ export class PrintQueueApi {
             break;
         }
       } catch (error) {
-        console.error('Error parsing SSE message:', error);
+        log.error('Error parsing SSE message', error);
       }
     };
 
     eventSource.onerror = (error) => {
-      console.error('Print queue SSE error:', error);
+      log.error('Print queue SSE error', error);
     };
 
     return () => {

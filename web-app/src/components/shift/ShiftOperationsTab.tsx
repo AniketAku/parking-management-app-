@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent } from '../ui'
 import { Button } from '../ui/Button'
 import { ShiftEndReconciliation } from './ShiftEndReconciliation'
 import toast from 'react-hot-toast'
+import { log } from '../../utils/secureLogger'
 
 interface ShiftOperationsTabProps {
   linkingState: ShiftLinkingState
@@ -108,6 +109,80 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
     }
   }, [activeOperation, linkingState.activeShiftId])
 
+  // Load current cash when handover operation is activated
+  useEffect(() => {
+    if (activeOperation === 'handover' && linkingState.activeShiftId) {
+      const loadCurrentCash = async () => {
+        try {
+          // Get shift opening cash
+          const { data: shiftData } = await supabase
+            .from('shift_sessions')
+            .select('opening_cash_amount')
+            .eq('id', linkingState.activeShiftId)
+            .single()
+
+          const openingCash = shiftData?.opening_cash_amount || 0
+
+          // Get today's revenue
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const todayStart = today.toISOString()
+          const todayEnd = new Date()
+          todayEnd.setHours(23, 59, 59, 999)
+
+          const { data: todayEntries } = await supabase
+            .from('parking_entries')
+            .select('parking_fee, actual_fee, calculated_fee, status, exit_time')
+            .eq('shift_session_id', linkingState.activeShiftId)
+            .or(`and(entry_time.gte.${todayStart},entry_time.lte.${todayEnd.toISOString()}),and(exit_time.gte.${todayStart},exit_time.lte.${todayEnd.toISOString()})`)
+
+          const todayRevenue = todayEntries?.reduce((sum, entry) => {
+            if (entry.status === 'Exited' || entry.exit_time) {
+              const fee = entry.parking_fee || entry.actual_fee || entry.calculated_fee || 0
+              return sum + fee
+            }
+            return sum
+          }, 0) || 0
+
+          // Get total expenses
+          const { data: expenseData } = await supabase
+            .from('shift_expenses')
+            .select('amount')
+            .eq('shift_session_id', linkingState.activeShiftId)
+
+          const expenses = expenseData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
+
+          // Get total cash deposits
+          const { data: depositData } = await supabase
+            .from('shift_deposits')
+            .select('cash_amount')
+            .eq('shift_session_id', linkingState.activeShiftId)
+
+          const totalCashDeposits = depositData?.reduce((sum, dep) => sum + Number(dep.cash_amount), 0) || 0
+
+          // ✅ CORRECT CALCULATION: Current Cash = Opening Cash + Revenue - Expenses - Cash Deposits
+          const calculatedCurrentCash = openingCash + todayRevenue - expenses - totalCashDeposits
+
+          setHandoverData(prev => ({
+            ...prev,
+            currentCash: calculatedCurrentCash
+          }))
+
+          log.debug('HANDOVER - Auto-filled current cash', {
+            openingCash,
+            todayRevenue,
+            expenses,
+            totalCashDeposits,
+            currentCash: calculatedCurrentCash
+          })
+        } catch (error) {
+          log.error('Error loading current cash for handover', error)
+        }
+      }
+      loadCurrentCash()
+    }
+  }, [activeOperation, linkingState.activeShiftId])
+
   // Reconciliation callbacks
   const handleClosingCashSuggestion = useCallback((suggestedAmount: number) => {
     setEndShiftData(prev => ({
@@ -175,7 +250,7 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
       // Refresh data
       await onRefresh()
     } catch (error) {
-      console.error('Failed to start shift:', error)
+      log.error('Failed to start shift', error)
       toast.error('Failed to start shift. Please try again.')
     } finally {
       setOperationLoading(false)
@@ -247,7 +322,7 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
       // Refresh data
       await onRefresh()
     } catch (error) {
-      console.error('Failed to end shift:', error)
+      log.error('Failed to end shift', error)
       toast.error('Failed to end shift. Please try again.')
     } finally {
       setOperationLoading(false)
@@ -314,9 +389,9 @@ export const ShiftOperationsTab: React.FC<ShiftOperationsTabProps> = ({
       // Refresh data
       await onRefresh()
     } catch (error) {
-      console.error('Failed to handover shift:', error)
+      log.error('Failed to handover shift', error)
       toast.error('Failed to handover shift. Please try again.')
-    } finally {
+    } finally{
       setOperationLoading(false)
     }
   }, [linkingState.activeShiftId, handoverData, onRefresh])

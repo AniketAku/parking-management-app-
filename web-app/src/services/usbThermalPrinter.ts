@@ -3,6 +3,7 @@
  * Direct communication with USB thermal printers using WebUSB API
  */
 
+import { log } from '../utils/secureLogger'
 import type {
   ThermalPrinterService,
   ParkingTicketData,
@@ -163,7 +164,7 @@ export class USBThermalPrinter implements ThermalPrinterService {
       });
 
     } catch (error) {
-      console.error('Error during disconnect:', error);
+      log.error('Error during disconnect', error);
     } finally {
       this.device = null;
       this.config = null;
@@ -205,9 +206,9 @@ export class USBThermalPrinter implements ThermalPrinterService {
       
       // Parse status based on response (implementation specific to printer model)
       return this.parseStatusResponse(result.data);
-      
+
     } catch (error) {
-      console.error('Error checking printer status:', error);
+      log.error('Error checking printer status', error);
       return {
         connected: true,
         online: false,
@@ -468,9 +469,9 @@ export class USBThermalPrinter implements ThermalPrinterService {
       });
       
       await this.printESCPOS(combinedCommand);
-      
+
     } catch (error) {
-      console.error('Failed to initialize printer:', error);
+      log.error('Failed to initialize printer', error);
     }
   }
 
@@ -506,7 +507,7 @@ export class USBThermalPrinter implements ThermalPrinterService {
           data: status
         });
       } catch (error) {
-        console.error('Error during status check:', error);
+        log.error('Error during status check', error);
       }
     }, 10000); // Check every 10 seconds
   }
@@ -552,7 +553,7 @@ export class USBThermalPrinter implements ThermalPrinterService {
         try {
           callback(event);
         } catch (error) {
-          console.error('Error in event listener:', error);
+          log.error('Error in event listener', error);
         }
       });
     }

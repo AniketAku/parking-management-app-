@@ -5,6 +5,7 @@
 
 import { BusinessRulesEngine } from './businessRulesEngine'
 import { BusinessRulesValidator } from './businessRulesValidator'
+import { log } from '../utils/secureLogger'
 import type {
   ParkingRateConfig,
   BusinessRulesEngine as EngineConfig,
@@ -352,8 +353,8 @@ export class BusinessRulesMigrationService {
     // 2. Update configuration files
     // 3. Initialize the new business rules engine
     // 4. Create audit trail entry
-    
-    console.log('Migration applied successfully:', {
+
+    log.success('Migration applied successfully', {
       rates: convertedRules.rates.length,
       timestamp: convertedRules.lastUpdated
     })
@@ -384,11 +385,11 @@ export class BusinessRulesMigrationService {
       // 1. Restore config.py from backup
       // 2. Restore database settings
       // 3. Clear new business rules configuration
-      
-      console.log('Migration rollback completed using backup:', backupData.timestamp)
+
+      log.success('Migration rollback completed using backup', { timestamp: backupData.timestamp })
       return true
     } catch (error) {
-      console.error('Rollback failed:', error)
+      log.error('Rollback failed', error)
       return false
     }
   }

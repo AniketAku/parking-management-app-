@@ -5,48 +5,51 @@
 
 import { UserService } from './services/userService'
 import { secureAuthService } from './services/secureAuthService'
+import { log } from './utils/secureLogger'
 
 async function testUserRegistrationWorkflow() {
-  console.log('🧪 Testing Phone-Only User Registration Workflow')
-  console.log('=' .repeat(60))
+  log.info('Testing Phone-Only User Registration Workflow')
   
   try {
     // Test 1: UserService registration (clean system)
-    console.log('🔍 Test 1: UserService Registration')
+    log.info('Test 1: UserService Registration')
     const testUser1 = {
       username: 'testuser1',
       password: 'TestPass123!',
       fullName: 'Test User One',
       phone: '+9876543210'
     }
-    
+
     const result1 = await UserService.registerUser(testUser1)
-    console.log('UserService Result:', result1)
-    
-    // Test 2: SecureAuthService registration (refactored system) 
-    console.log('\n🔍 Test 2: SecureAuthService Registration')
+    log.info('UserService Result', result1)
+
+    // Test 2: SecureAuthService registration (refactored system)
+    log.info('Test 2: SecureAuthService Registration')
     const testUser2 = {
       username: 'testuser2',
-      password: 'TestPass456!', 
+      password: 'TestPass456!',
       fullName: 'Test User Two',
       phone: '+1987654321'
     }
-    
+
     const result2 = await secureAuthService.register(testUser2)
-    console.log('SecureAuthService Result:', result2)
-    
+    log.info('SecureAuthService Result', result2)
+
     // Test 3: Login with SecureAuthService
-    console.log('\n🔍 Test 3: Login Test')
+    log.info('Test 3: Login Test')
     const loginResult = await secureAuthService.login({
       username: 'testuser2',
       password: 'TestPass456!'
     })
-    console.log('Login Result:', loginResult.success ? '✅ Success' : `❌ Failed: ${loginResult.error}`)
-    
-    console.log('\n✅ All registration tests completed!')
-    
+    log.info('Login Result', {
+      success: loginResult.success,
+      message: loginResult.success ? 'Success' : `Failed: ${loginResult.error}`
+    })
+
+    log.success('All registration tests completed')
+
   } catch (error) {
-    console.error('❌ Test failed:', error)
+    log.error('Test failed', error)
   }
 }
 

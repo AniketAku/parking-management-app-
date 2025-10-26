@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabase'
 import { settingsService } from './settingsService'
+import { log } from '../utils/secureLogger'
 import type {
   SettingsChangeEvent,
   SettingsSubscription,
@@ -107,7 +108,7 @@ class SettingsRealtimeService {
       try {
         callback(event)
       } catch (error) {
-        console.error('Error in global settings callback:', error)
+        log.error('Error in global settings callback', error)
       }
     })
 
@@ -118,7 +119,7 @@ class SettingsRealtimeService {
           try {
             callback(event)
           } catch (error) {
-            console.error('Error in filtered settings callback:', error)
+            log.error('Error in filtered settings callback', error)
           }
         })
       }
@@ -224,7 +225,7 @@ class SettingsRealtimeService {
         try {
           callback(payload.new)
         } catch (error) {
-          console.error('Error in audit trail callback:', error)
+          log.error('Error in audit trail callback', error)
         }
       })
       .subscribe()
@@ -310,7 +311,7 @@ class SettingsRealtimeService {
       })
 
     } catch (error) {
-      console.error('Failed to sync with server:', error)
+      log.error('Failed to sync with server', error)
       throw error
     }
   }
@@ -332,10 +333,10 @@ class SettingsRealtimeService {
       // Set up global change listener
       this.setupGlobalChangeListener()
 
-      console.log('Settings real-time service connected')
+      log.success('Settings real-time service connected')
 
     } catch (error) {
-      console.error('Failed to initialize settings real-time connection:', error)
+      log.error('Failed to initialize settings real-time connection', error)
       this.scheduleReconnect()
     }
   }
@@ -367,9 +368,9 @@ class SettingsRealtimeService {
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('Global settings listener active')
+          log.success('Global settings listener active')
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('Global settings listener error')
+          log.error('Global settings listener error')
           this.scheduleReconnect()
         }
       })
@@ -400,7 +401,7 @@ class SettingsRealtimeService {
       this.broadcastChange(event)
 
     } catch (error) {
-      console.error('Error handling database change:', error)
+      log.error('Error handling database change', error)
     }
   }
 
@@ -417,14 +418,14 @@ class SettingsRealtimeService {
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached')
+      log.error('Max reconnection attempts reached')
       return
     }
 
     this.reconnectAttempts++
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
 
-    console.log(`Scheduling reconnection attempt ${this.reconnectAttempts} in ${delay}ms`)
+    log.info('Scheduling reconnection attempt', { attempt: this.reconnectAttempts, delay })
 
     setTimeout(() => {
       this.initializeConnection()

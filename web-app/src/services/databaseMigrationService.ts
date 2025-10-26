@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '../lib/supabase'
+import { log } from '../utils/secureLogger'
 
 export interface MigrationResult {
   success: boolean
@@ -57,7 +58,7 @@ class DatabaseMigrationService {
         .eq('table_name', 'parking_entries')
 
       if (error) {
-        console.error('Schema validation error:', error)
+        log.error('Schema validation error', error)
         throw new Error(`Failed to validate schema: ${error.message}`)
       }
 
@@ -74,7 +75,7 @@ class DatabaseMigrationService {
         .limit(1)
 
       if (statusError) {
-        console.warn('Could not check status values:', statusError)
+        log.warn('Could not check status values', statusError)
       }
 
       const statusNeedsUpdate = !statusError && parkedEntries && parkedEntries.length > 0
@@ -87,7 +88,7 @@ class DatabaseMigrationService {
       }
 
     } catch (error) {
-      console.error('Schema validation failed:', error)
+      log.error('Schema validation failed', error)
       throw error
     }
   }
@@ -163,7 +164,7 @@ class DatabaseMigrationService {
       }
 
     } catch (error) {
-      console.error('Migration failed:', error)
+      log.error('Migration failed', error)
       return {
         success: false,
         message: 'Migration failed',
@@ -200,7 +201,7 @@ class DatabaseMigrationService {
 
       if (error) {
         // If RPC doesn't exist, try direct SQL (this may not work depending on Supabase configuration)
-        console.warn('RPC method failed, attempting direct SQL...')
+        log.warn('RPC method failed, attempting direct SQL')
         throw new Error(`RPC failed: ${error.message}`)
       }
 
@@ -210,7 +211,7 @@ class DatabaseMigrationService {
       }
 
     } catch (error) {
-      console.error(`Failed to add column ${columnName}:`, error)
+      log.error('Failed to add column', { columnName, error })
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -241,7 +242,7 @@ class DatabaseMigrationService {
       }
 
     } catch (error) {
-      console.error('Failed to update status values:', error)
+      log.error('Failed to update status values', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

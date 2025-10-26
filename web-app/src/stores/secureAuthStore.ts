@@ -3,6 +3,7 @@ import { devtools, persist } from 'zustand/middleware'
 import type { AuthUser, AuthTokens, LoginCredentials } from '../types'
 import { secureAuthService, type AuthResult, type RegistrationData, type PasswordChangeRequest } from '../services/secureAuthService'
 import { supabase } from '../lib/supabase'
+import { log } from '../utils/secureLogger'
 
 interface SecureAuthState {
   user: AuthUser | null
@@ -42,8 +43,7 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
         initializeAuth: async () => {
           const currentState = get()
-          console.log('🔐 [InitAuth] Starting authentication initialization...')
-          console.log('🔍 [InitAuth] Current state before init:', {
+          log.debug('Starting authentication initialization', {
             hasUser: !!currentState.user,
             hasTokens: !!currentState.tokens,
             isAuthenticated: currentState.isAuthenticated,
@@ -53,7 +53,7 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
           // Don't re-initialize if already in progress
           if (currentState.isLoading) {
-            console.log('⚠️ [InitAuth] Already initializing, skipping...')
+            log.debug('Already initializing, skipping')
             return
           }
 
@@ -63,20 +63,21 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
             // Check if we have persisted user and tokens
             if (currentState.user && currentState.tokens) {
-              console.log('📦 Found persisted auth data, validating session...')
-              console.log('👤 User data:', { name: currentState.user.name, role: currentState.user.role })
+              log.debug('Found persisted auth data, validating session', {
+                name: currentState.user.name,
+                role: currentState.user.role
+              })
 
               // Validate session is still good
-              console.log('⏳ Calling validateSession...')
               const validation = await secureAuthService.validateSession()
-              console.log('✅ Validation result:', validation)
+              log.debug('Validation result', { isValid: validation.isValid, hasUser: !!validation.user })
 
               if (validation.isValid && validation.user) {
-                console.log('✅ Session valid, restoring authentication')
+                log.info('Session valid, restoring authentication')
 
                 // Update tokens from current session
                 const { data: { session } } = await supabase.auth.getSession()
-                console.log('🔗 Supabase session:', { hasSession: !!session, user: session?.user?.id })
+                log.debug('Supabase session', { hasSession: !!session, userId: session?.user?.id })
 
                 const tokens: AuthTokens = session ? {
                   accessToken: session.access_token,
@@ -92,23 +93,21 @@ export const useSecureAuthStore = create<SecureAuthState>()(
                   error: null
                 })
 
-                console.log('🎉 Authentication restored successfully')
+                log.success('Authentication restored successfully')
                 return
               } else {
-                console.log('❌ Session invalid, validation result:', validation)
-                console.log('🧹 Clearing persisted data...')
+                log.warn('Session invalid, clearing persisted data', { validationResult: validation })
                 await secureAuthService.logout()
               }
             } else {
-              console.log('📭 No persisted auth data found')
-              console.log('🔍 Checking what we have:', {
-                user: currentState.user,
-                tokens: currentState.tokens
+              log.debug('No persisted auth data found', {
+                hasUser: !!currentState.user,
+                hasTokens: !!currentState.tokens
               })
             }
 
             // No valid persisted auth or validation failed
-            console.log('🚫 Setting unauthenticated state')
+            log.debug('Setting unauthenticated state')
             set({
               user: null,
               tokens: null,
@@ -118,7 +117,7 @@ export const useSecureAuthStore = create<SecureAuthState>()(
             })
 
           } catch (error) {
-            console.error('❌ Auth initialization failed:', error)
+            log.error('Auth initialization failed', error)
             set({
               user: null,
               tokens: null,
@@ -131,15 +130,15 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
         login: async (credentials: LoginCredentials) => {
           set({ isLoading: true, error: null })
-          
+
           try {
             // Secure login attempt initiated
-            
+
             // Always use production-ready secure auth service
             const authService = secureAuthService
-            
+
             const result: AuthResult = await authService.login(credentials)
-            
+
             set({
               user: result.user,
               tokens: result.tokens,
@@ -148,9 +147,9 @@ export const useSecureAuthStore = create<SecureAuthState>()(
               error: null
             })
 
-            console.log('✅ Secure login successful')
+            log.success('Secure login successful')
           } catch (error) {
-            console.error('❌ Secure login failed:', error)
+            log.error('Secure login failed', error)
             const errorMessage = error instanceof Error ? error.message : 'Login failed'
             
             set({
@@ -167,10 +166,10 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
         register: async (userData: RegistrationData) => {
           set({ isLoading: true, error: null })
-          
+
           try {
             const result: AuthResult = await secureAuthService.register(userData)
-            
+
             set({
               user: result.user,
               tokens: result.tokens,
@@ -179,9 +178,9 @@ export const useSecureAuthStore = create<SecureAuthState>()(
               error: null
             })
 
-            console.log('✅ Registration successful')
+            log.success('Registration successful')
           } catch (error) {
-            console.error('❌ Registration failed:', error)
+            log.error('Registration failed', error)
             const errorMessage = error instanceof Error ? error.message : 'Registration failed'
             
             set({
@@ -198,10 +197,10 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
         logout: async () => {
           set({ isLoading: true })
-          
+
           try {
             await secureAuthService.logout()
-            
+
             set({
               user: null,
               tokens: null,
@@ -210,9 +209,9 @@ export const useSecureAuthStore = create<SecureAuthState>()(
               error: null
             })
 
-            console.log('✅ Secure logout successful')
+            log.success('Secure logout successful')
           } catch (error) {
-            console.error('❌ Logout error:', error)
+            log.error('Logout error', error)
             // Force logout even if API call fails
             set({
               user: null,
@@ -226,23 +225,23 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
         refreshToken: async () => {
           const { tokens } = get()
-          
+
           if (!tokens?.refreshToken) {
             throw new Error('No refresh token available')
           }
 
           try {
             const newTokens = await secureAuthService.refreshToken()
-            
-            set({ 
+
+            set({
               tokens: newTokens,
-              error: null 
+              error: null
             })
-            
-            console.log('✅ Token refreshed successfully')
+
+            log.info('Token refreshed successfully')
           } catch (error) {
-            console.error('❌ Token refresh failed:', error)
-            
+            log.error('Token refresh failed', error)
+
             // Force logout on refresh failure
             await get().logout()
             throw new Error('Session expired. Please login again.')
@@ -251,7 +250,7 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
         changePassword: async (request: PasswordChangeRequest) => {
           const { user } = get()
-          
+
           if (!user) {
             throw new Error('User not authenticated')
           }
@@ -260,22 +259,22 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
           try {
             await secureAuthService.changePassword(request)
-            
-            set({ 
-              isLoading: false, 
-              error: null 
+
+            set({
+              isLoading: false,
+              error: null
             })
 
-            console.log('✅ Password changed successfully')
+            log.success('Password changed successfully')
           } catch (error) {
-            console.error('❌ Password change failed:', error)
+            log.error('Password change failed', error)
             const errorMessage = error instanceof Error ? error.message : 'Password change failed'
-            
-            set({ 
-              isLoading: false, 
-              error: errorMessage 
+
+            set({
+              isLoading: false,
+              error: errorMessage
             })
-            
+
             throw error
           }
         },
@@ -283,7 +282,7 @@ export const useSecureAuthStore = create<SecureAuthState>()(
         validateSession: async () => {
           try {
             const validation = await secureAuthService.validateSession()
-            
+
             if (!validation.isValid) {
               // Session invalid, clear state
               set({
@@ -309,7 +308,7 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
             return validation.isValid
           } catch (error) {
-            console.error('Session validation failed:', error)
+            log.error('Session validation failed', error)
             
             set({
               user: null,
@@ -324,50 +323,50 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
         requestPasswordReset: async (username: string) => {
           set({ isLoading: true, error: null })
-          
+
           try {
             await secureAuthService.requestPasswordReset(username)
-            
-            set({ 
-              isLoading: false, 
-              error: null 
+
+            set({
+              isLoading: false,
+              error: null
             })
 
-            console.log('✅ Password reset email sent')
+            log.success('Password reset email sent')
           } catch (error) {
-            console.error('❌ Password reset request failed:', error)
+            log.error('Password reset request failed', error)
             const errorMessage = error instanceof Error ? error.message : 'Password reset failed'
-            
-            set({ 
-              isLoading: false, 
-              error: errorMessage 
+
+            set({
+              isLoading: false,
+              error: errorMessage
             })
-            
+
             throw error
           }
         },
 
         resetPassword: async (newPassword: string) => {
           set({ isLoading: true, error: null })
-          
+
           try {
             await secureAuthService.resetPassword(newPassword)
-            
-            set({ 
-              isLoading: false, 
-              error: null 
+
+            set({
+              isLoading: false,
+              error: null
             })
 
-            console.log('✅ Password reset successful')
+            log.success('Password reset successful')
           } catch (error) {
-            console.error('❌ Password reset failed:', error)
+            log.error('Password reset failed', error)
             const errorMessage = error instanceof Error ? error.message : 'Password reset failed'
-            
-            set({ 
-              isLoading: false, 
-              error: errorMessage 
+
+            set({
+              isLoading: false,
+              error: errorMessage
             })
-            
+
             throw error
           }
         },
@@ -423,9 +422,9 @@ export const useSecureAuthStore = create<SecureAuthState>()(
         },
         // Custom rehydration to properly derive isAuthenticated
         onRehydrateStorage: () => (state) => {
-          console.log('🚀 [Rehydration] Starting Zustand rehydration...')
+          log.debug('Starting Zustand rehydration')
           if (state) {
-            console.log('📥 [Rehydration] Raw persisted state:', {
+            log.debug('Raw persisted state', {
               hasUser: !!state.user,
               hasTokens: !!state.tokens,
               wasAuthenticated: state.isAuthenticated,
@@ -437,14 +436,14 @@ export const useSecureAuthStore = create<SecureAuthState>()(
             // Mark as hydrated to prevent race conditions
             state.hasHydrated = true
 
-            console.log('✅ [Rehydration] Auth state rehydrated:', {
+            log.info('Auth state rehydrated', {
               hasUser: !!state.user,
               hasTokens: !!state.tokens,
               isAuthenticated: state.isAuthenticated,
               hasHydrated: state.hasHydrated
             })
           } else {
-            console.log('📭 [Rehydration] No persisted state found')
+            log.debug('No persisted state found')
           }
         }
       }
@@ -456,12 +455,12 @@ export const useSecureAuthStore = create<SecureAuthState>()(
 
 // Setup authentication state change listener for token management only
 supabase.auth.onAuthStateChange(async (event, session) => {
-  console.log('🔐 Auth state changed:', event)
+  log.debug('Auth state changed', { event })
 
   // Only handle token refresh and logout events
   // Login and session restoration are handled by initializeAuth() and login() methods
   if (event === 'TOKEN_REFRESHED' && session) {
-    console.log('🔄 Token refreshed by Supabase')
+    log.info('Token refreshed by Supabase')
     // Token refreshed, update tokens
     const tokens: AuthTokens = {
       accessToken: session.access_token,
@@ -476,7 +475,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
       error: null
     })
   } else if (event === 'SIGNED_OUT') {
-    console.log('👋 Signed out by Supabase')
+    log.info('Signed out by Supabase')
     // Session ended, clear store
     useSecureAuthStore.setState({
       user: null,

@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { newSettingsService, type SettingCategory, type BusinessSettings, type UIThemeSettings } from '../services/newSettingsService'
+import { log } from '../utils/secureLogger'
 
 // ================================================
 // GENERIC SETTINGS HOOK
@@ -44,13 +45,13 @@ export function useSettings<T extends Record<string, any>>(
         useCache,
         throwOnError
       })
-      
+
       setSettings(data)
-      console.log(`🔧 Loaded ${Object.keys(data).length} settings for category ${category}`)
+      log.debug('Settings loaded', { category, count: Object.keys(data).length })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load settings'
       setError(errorMessage)
-      console.error(`Failed to load ${category} settings:`, err)
+      log.error('Failed to load settings', { category, error: err })
     } finally {
       setLoading(false)
     }
@@ -70,7 +71,7 @@ export function useSettings<T extends Record<string, any>>(
       
       return success
     } catch (err) {
-      console.error(`Failed to update ${category} settings:`, err)
+      log.error('Failed to update settings', { category, error: err })
       return false
     }
   }, [category, throwOnError])
@@ -88,7 +89,7 @@ export function useSettings<T extends Record<string, any>>(
       
       return success
     } catch (err) {
-      console.error(`Failed to update setting ${category}.${key}:`, err)
+      log.error('Failed to update setting', { category, key, error: err })
       return false
     }
   }, [category, throwOnError])
@@ -108,7 +109,7 @@ export function useSettings<T extends Record<string, any>>(
     if (!autoRefresh) return
 
     const unsubscribe = newSettingsService.subscribeToCategory(category, (changedSettings) => {
-      console.log(`📡 Settings updated for ${category}:`, changedSettings)
+      log.debug('Settings updated', { category, changedSettings })
       setSettings(prev => ({ ...prev, ...changedSettings }))
     })
 
@@ -236,7 +237,7 @@ export function useSetting<T = any>(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load setting'
       setError(errorMessage)
-      console.error(`Failed to load setting ${category}.${key}:`, err)
+      log.error('Failed to load setting', { category, key, error: err })
     } finally {
       setLoading(false)
     }
@@ -255,7 +256,7 @@ export function useSetting<T = any>(
       
       return success
     } catch (err) {
-      console.error(`Failed to update setting ${category}.${key}:`, err)
+      log.error('Failed to update setting', { category, key, error: err })
       return false
     }
   }, [category, key, throwOnError])
@@ -342,7 +343,7 @@ export function useCurrencyFormatter(options?: UseSettingsOptions) {
         currency: currencyCode
       }).format(amount)
     } catch (err) {
-      console.warn(`Failed to format currency with locale ${locale} and currency ${currencyCode}:`, err)
+      log.warn('Failed to format currency', { locale, currencyCode, error: err })
       return `${currencyCode} ${amount.toFixed(2)}`
     }
   }, [settings.currency_code, settings.locale])

@@ -3,6 +3,8 @@
  * Handles ticket generation, printing, and business logic
  */
 
+import { log } from '../utils/secureLogger'
+
 export interface TicketData {
   id: string
   vehicle_number: string
@@ -187,7 +189,7 @@ export class TicketService {
         }, 500)
       })
     } catch (error) {
-      console.error('Failed to print ticket:', error)
+      log.error('Failed to print ticket', error)
       return false
     }
   }
@@ -264,7 +266,7 @@ export class TicketService {
         previewWindow.document.close()
       }
     } catch (error) {
-      console.error('Failed to open preview:', error)
+      log.error('Failed to open preview', error)
     }
   }
 

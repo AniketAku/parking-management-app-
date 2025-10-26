@@ -1,4 +1,5 @@
 import type { ParkingEntry, ParkingStatistics } from '../types'
+import { log } from '../utils/secureLogger'
 
 // Mock Socket.IO server for development and testing
 // This simulates real-time events when a real server isn't available
@@ -28,7 +29,7 @@ class MockSocketServer {
   private startSimulation() {
     if (!this.isActive) return
 
-    console.log('🧪 Mock Socket.IO server started for development')
+    log.debug('Mock Socket.IO server started for development')
 
     // Simulate connection events
     setTimeout(() => {
@@ -218,11 +219,11 @@ class MockSocketServer {
 
   // Room simulation (no-op for mock)
   join(room: string) {
-    console.log(`🏠 Mock: Joined room ${room}`)
+    log.debug('Mock: Joined room', { room })
   }
 
   leave(room: string) {
-    console.log(`🏠 Mock: Left room ${room}`)
+    log.debug('Mock: Left room', { room })
   }
 
   cleanup() {
